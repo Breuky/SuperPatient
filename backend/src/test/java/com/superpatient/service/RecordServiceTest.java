@@ -4,11 +4,15 @@ import com.superpatient.dto.RecordCreateRequest;
 import com.superpatient.dto.ValueItem;
 import com.superpatient.entity.ExamIndicator;
 import com.superpatient.entity.ExamValue;
+import com.superpatient.entity.User;
 import com.superpatient.mapper.CategoryMapper;
 import com.superpatient.mapper.IndicatorMapper;
-import com.superpatient.mapper.PatientMapper;
 import com.superpatient.mapper.RecordMapper;
+import com.superpatient.mapper.UserMapper;
 import com.superpatient.mapper.ValueMapper;
+import com.superpatient.util.CurrentHolder;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -31,12 +35,22 @@ class RecordServiceTest {
 
     @Mock private RecordMapper recordMapper;
     @Mock private ValueMapper valueMapper;
-    @Mock private PatientMapper patientMapper;
+    @Mock private UserMapper userMapper;
     @Mock private IndicatorMapper indicatorMapper;
     @Mock private CategoryMapper categoryMapper;
     @Mock private ReferenceRangeService referenceRangeService;
 
     @InjectMocks private RecordService recordService;
+
+    @BeforeEach
+    void setUp() {
+        CurrentHolder.setCurrentId(1L);
+    }
+
+    @AfterEach
+    void tearDown() {
+        CurrentHolder.remove();
+    }
 
     @Test
     void flagsValuesOutsideIndicatorRange() {
@@ -76,6 +90,19 @@ class RecordServiceTest {
         assertEquals(0, saved.getIsAbnormal(), "按报告区间 3~5 判断，3.2 属正常");
         assertEquals(0, new BigDecimal("3").compareTo(saved.getRefMin()));
         assertEquals(0, new BigDecimal("5").compareTo(saved.getRefMax()));
+        assertEquals("report", saved.getRefSource());
+    }
+
+    @Test
+    void writesRecordUnderCurrentUser() {
+        when(indicatorMapper.findById(1)).thenReturn(indicator(1, "4", "10"));
+
+        recordService.create(request(item(1, "6.8")));
+
+        ArgumentCaptor<com.superpatient.entity.ExamRecord> captor =
+                ArgumentCaptor.forClass(com.superpatient.entity.ExamRecord.class);
+        verify(recordMapper).insert(captor.capture());
+        assertEquals(1L, captor.getValue().getUserId(), "记录直接挂在当前登录用户上");
     }
 
     private List<ExamValue> capturedValues() {
@@ -86,15 +113,11 @@ class RecordServiceTest {
     }
 
     private List<Integer> capturedAbnormalFlags() {
-        @SuppressWarnings("unchecked")
-        ArgumentCaptor<List<ExamValue>> captor = ArgumentCaptor.forClass(List.class);
-        verify(valueMapper).batchInsert(captor.capture());
-        return captor.getValue().stream().map(ExamValue::getIsAbnormal).toList();
+        return capturedValues().stream().map(ExamValue::getIsAbnormal).toList();
     }
 
     private RecordCreateRequest request(ValueItem... items) {
         RecordCreateRequest request = new RecordCreateRequest();
-        request.setPatientId(1L);
         request.setCategoryId(1);
         request.setExamDate("2026-01-01T10:00:00");
         request.setValues(List.of(items));

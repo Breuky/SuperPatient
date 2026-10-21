@@ -5,7 +5,6 @@ import java.util.List;
 
 @Data
 public class RecordCreateRequest {
-    private Long patientId;
     private Integer categoryId;
     private String examDate;
     private String hospital;

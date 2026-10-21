@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class StatisticsVO {
-    private Integer patientCount;
     private Integer recordCount;
     private Integer indicatorCount;
 }

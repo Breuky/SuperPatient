@@ -9,9 +9,8 @@ import com.superpatient.extract.ExtractionPrompt;
 import com.superpatient.extract.IndicatorMatcher;
 import com.superpatient.extract.UnitNormalizer;
 import com.superpatient.llm.LlmVisionClient;
-import com.superpatient.entity.Patient;
 import com.superpatient.mapper.IndicatorMapper;
-import com.superpatient.mapper.PatientMapper;
+import com.superpatient.mapper.UserMapper;
 import com.superpatient.util.CurrentHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,7 +38,7 @@ public class ReportExtractionService {
 
     private final FileService fileService;
     private final IndicatorMapper indicatorMapper;
-    private final PatientMapper patientMapper;
+    private final UserMapper userMapper;
     private final ReferenceRangeService referenceRangeService;
     private final IndicatorMatcher indicatorMatcher;
     private final LlmVisionClient llmVisionClient;
@@ -63,8 +62,8 @@ public class ReportExtractionService {
         }
 
         List<ExamIndicator> pool = indicatorMapper.findByCategoryId(categoryId);
-        ReferenceRangeService.PatientContext ctx = ReferenceRangeService.PatientContext.of(
-                patientMapper.findByUserId(CurrentHolder.getCurrentId()));
+        ReferenceRangeService.UserContext ctx = ReferenceRangeService.UserContext.of(
+                userMapper.findById(CurrentHolder.getCurrentId()));
         String prompt = ExtractionPrompt.build(pool);
         String raw = llmVisionClient.extract(bytes, mimeType, prompt);
         log.info("抽取原始输出({}): {}", llmVisionClient.displayName(),
@@ -74,7 +73,7 @@ public class ReportExtractionService {
     }
 
     private ExtractResultVO assemble(String raw, List<ExamIndicator> pool, Integer categoryId,
-                                     ReferenceRangeService.PatientContext ctx) {
+                                     ReferenceRangeService.UserContext ctx) {
         JsonNode root = readJson(raw);
 
         ExtractResultVO vo = new ExtractResultVO();
@@ -112,7 +111,7 @@ public class ReportExtractionService {
 
     private ExtractResultVO.Candidate toCandidate(JsonNode item, String rawName, String rawValue,
                                                   String rawUnit, IndicatorMatcher.Match match,
-                                                  ReferenceRangeService.PatientContext ctx) {
+                                                  ReferenceRangeService.UserContext ctx) {
         ExamIndicator indicator = match.indicator();
         List<String> warnings = new ArrayList<>();
 
@@ -160,7 +159,7 @@ public class ReportExtractionService {
 
     /** 优先用报告印刷的区间，其次按性别/年龄规则，最后回落指标库默认值 */
     private BigDecimal[] resolveRange(JsonNode item, ExamIndicator indicator,
-                                      ReferenceRangeService.PatientContext ctx) {
+                                      ReferenceRangeService.UserContext ctx) {
         BigDecimal min = decimal(item.get("refMin"));
         BigDecimal max = decimal(item.get("refMax"));
         String refText = text(item, "refText");

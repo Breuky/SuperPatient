@@ -4,19 +4,15 @@ import com.superpatient.dto.TrendVO;
 import com.superpatient.dto.TrendableIndicatorVO;
 import com.superpatient.entity.ExamIndicator;
 import com.superpatient.entity.ExamValue;
-import com.superpatient.entity.Patient;
 import com.superpatient.mapper.IndicatorMapper;
-import com.superpatient.mapper.PatientMapper;
+import com.superpatient.mapper.UserMapper;
 import com.superpatient.mapper.ValueMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -24,18 +20,18 @@ public class TrendService {
 
     private final ValueMapper valueMapper;
     private final IndicatorMapper indicatorMapper;
-    private final PatientMapper patientMapper;
+    private final UserMapper userMapper;
     private final ReferenceRangeService referenceRangeService;
 
-    public TrendVO getTrends(Long patientId, Integer indicatorId, String startDate, String endDate) {
+    public TrendVO getTrends(Long userId, Integer indicatorId, String startDate, String endDate) {
         ExamIndicator ind = indicatorMapper.findById(indicatorId);
         if (ind == null) return null;
 
-        List<ExamValue> values = valueMapper.findByPatientIdAndIndicatorId(
-                patientId, indicatorId, startDate, endDate);
+        List<ExamValue> values = valueMapper.findByUserIdAndIndicatorId(
+                userId, indicatorId, startDate, endDate);
 
-        Patient patient = patientMapper.findById(patientId);
-        ReferenceRangeService.PatientContext ctx = ReferenceRangeService.PatientContext.of(patient);
+        ReferenceRangeService.UserContext ctx = ReferenceRangeService.UserContext.of(
+                userMapper.findById(userId));
         ReferenceRangeService.Resolved rule = referenceRangeService.resolve(ind.getId(), ctx);
 
         TrendVO vo = new TrendVO();
@@ -48,39 +44,34 @@ public class TrendService {
         ti.setNormalMax(rule != null ? rule.max() : ind.getNormalMax());
         vo.setIndicator(ti);
 
-        // We need record dates alongside values — we already have values with record_id
-        // The values are from a join query, but we only have value fields
-        // Let's handle this by using the valueMapper result which comes from a join
         List<TrendVO.TrendPoint> points = new ArrayList<>();
         for (ExamValue v : values) {
             TrendVO.TrendPoint p = new TrendVO.TrendPoint();
             p.setRecordId(v.getRecordId());
             p.setValue(v.getValueDecimal());
             p.setIsAbnormal(v.getIsAbnormal());
+            p.setExamDate(v.getExamDate() != null
+                    ? v.getExamDate().format(DateTimeFormatter.ISO_LOCAL_DATE)
+                    : null);
             boolean hasSnapshot = v.getRefMin() != null || v.getRefMax() != null;
             p.setRefMin(hasSnapshot ? v.getRefMin() : (rule != null ? rule.min() : null));
             p.setRefMax(hasSnapshot ? v.getRefMax() : (rule != null ? rule.max() : null));
             p.setRefText(v.getRefText());
-            p.setExamDate(v.getExamDate() != null
-                    ? v.getExamDate().format(DateTimeFormatter.ISO_LOCAL_DATE)
-                    : null);
             points.add(p);
         }
         vo.setPoints(points);
-
         return vo;
     }
 
-    public List<TrendableIndicatorVO> getTrendableIndicators(Long patientId) {
-        // Return all enabled numeric indicators that have data for this patient
+    public List<TrendableIndicatorVO> getTrendableIndicators(Long userId) {
         List<ExamIndicator> allNumeric = indicatorMapper.findAllEnabled().stream()
                 .filter(i -> "number".equals(i.getValueType()))
                 .toList();
 
         List<TrendableIndicatorVO> result = new ArrayList<>();
         for (ExamIndicator ind : allNumeric) {
-            List<ExamValue> values = valueMapper.findByPatientIdAndIndicatorId(
-                    patientId, ind.getId(), null, null);
+            List<ExamValue> values = valueMapper.findByUserIdAndIndicatorId(
+                    userId, ind.getId(), null, null);
             if (!values.isEmpty()) {
                 TrendableIndicatorVO vo = new TrendableIndicatorVO();
                 vo.setIndicatorId(ind.getId());

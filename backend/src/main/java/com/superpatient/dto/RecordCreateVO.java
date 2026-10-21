@@ -6,7 +6,7 @@ import java.util.List;
 @Data
 public class RecordCreateVO {
     private Long id;
-    private Long patientId;
+    private Long userId;
     private Integer categoryId;
     private String examDate;
     private Integer abnormalCount;

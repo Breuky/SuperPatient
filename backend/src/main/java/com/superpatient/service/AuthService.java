@@ -1,10 +1,8 @@
 package com.superpatient.service;
 
 import com.superpatient.dto.*;
-import com.superpatient.entity.Patient;
 import com.superpatient.entity.User;
 import com.superpatient.exception.BusinessException;
-import com.superpatient.mapper.PatientMapper;
 import com.superpatient.mapper.RecordMapper;
 import com.superpatient.mapper.UserMapper;
 import com.superpatient.mapper.ValueMapper;
@@ -15,11 +13,15 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+import java.time.format.DateTimeParseException;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 
 /**
- * Web 端账号体系：用户名 + 密码，登录后用 JWT 换身份。
+ * Web 端账号体系：用户名 + 密码。
+ * 用户即患者本人，性别/出生日期直接挂在账号上（参考区间需要）。
  */
 @Service
 @RequiredArgsConstructor
@@ -28,15 +30,11 @@ public class AuthService {
     private static final int MIN_PASSWORD_LENGTH = 6;
 
     private final UserMapper userMapper;
-    private final PatientMapper patientMapper;
     private final RecordMapper recordMapper;
     private final ValueMapper valueMapper;
     private final JwtUtils jwtUtils;
     private final PasswordEncoder passwordEncoder;
 
-    /**
-     * 注册：创建账号，并自动创建一个与账号 1:1 的患者档案。
-     */
     @Transactional
     public LoginVO register(RegisterRequest request) {
         String username = normalizeUsername(request.getUsername());
@@ -53,19 +51,14 @@ public class AuthService {
         user.setUsername(username);
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setNickname(isBlank(request.getNickname()) ? username : request.getNickname().trim());
+        user.setGender(request.getGender());
         userMapper.insert(user);
-
-        Patient patient = new Patient();
-        patient.setUserId(user.getId());
-        patient.setName(user.getNickname());
-        patient.setGender(request.getGender());
-        patientMapper.insert(patient);
 
         return issueToken(user);
     }
 
     /**
-     * 登录：用户名不存在与密码错误返回同一句提示，避免暴露账号是否存在。
+     * 用户名不存在与密码错误返回同一句提示，避免暴露账号是否存在。
      */
     public LoginVO login(LoginRequest request) {
         String username = normalizeUsername(request.getUsername());
@@ -82,11 +75,10 @@ public class AuthService {
     }
 
     public UserVO getProfile() {
-        Long userId = CurrentHolder.getCurrentId();
-        User user = userMapper.findById(userId);
-        return toUserVO(user);
+        return toUserVO(userMapper.findById(CurrentHolder.getCurrentId()));
     }
 
+    @Transactional
     public UserVO updateProfile(ProfileUpdateRequest request) {
         Long userId = CurrentHolder.getCurrentId();
         User user = new User();
@@ -94,6 +86,9 @@ public class AuthService {
         user.setNickname(request.getNickname());
         user.setAvatarUrl(request.getAvatarUrl());
         user.setPhone(request.getPhone());
+        user.setGender(request.getGender());
+        user.setBirthDate(parseBirthDate(request.getBirthDate()));
+        user.setNotes(request.getNotes());
         userMapper.update(user);
         return toUserVO(userMapper.findById(userId));
     }
@@ -102,7 +97,7 @@ public class AuthService {
         Long userId = CurrentHolder.getCurrentId();
         int recordCount = recordMapper.countByUserId(userId);
         int indicatorCount = valueMapper.countDistinctIndicatorsByUserId(userId);
-        return new StatisticsVO(1, recordCount, indicatorCount);
+        return new StatisticsVO(recordCount, indicatorCount);
     }
 
     private LoginVO issueToken(User user) {
@@ -110,6 +105,15 @@ public class AuthService {
         claims.put("userId", user.getId());
         String token = jwtUtils.generateToken(claims);
         return new LoginVO(token, 43200L, toUserVO(user));
+    }
+
+    private LocalDate parseBirthDate(String raw) {
+        if (isBlank(raw)) return null;
+        try {
+            return LocalDate.parse(raw.trim());
+        } catch (DateTimeParseException e) {
+            throw new BusinessException("出生日期格式应为 yyyy-MM-dd");
+        }
     }
 
     private String normalizeUsername(String raw) {
@@ -137,6 +141,25 @@ public class AuthService {
     }
 
     private UserVO toUserVO(User user) {
-        return new UserVO(user.getId(), user.getNickname(), user.getAvatarUrl(), user.getPhone());
+        if (user == null) return null;
+        UserVO vo = new UserVO();
+        vo.setId(user.getId());
+        vo.setUsername(user.getUsername());
+        vo.setNickname(user.getNickname());
+        vo.setAvatarUrl(user.getAvatarUrl());
+        vo.setPhone(user.getPhone());
+        vo.setGender(user.getGender());
+        vo.setGenderText(genderText(user.getGender()));
+        vo.setNotes(user.getNotes());
+        if (user.getBirthDate() != null) {
+            vo.setBirthDate(user.getBirthDate().toString());
+            vo.setAge((int) ChronoUnit.YEARS.between(user.getBirthDate(), LocalDate.now()));
+        }
+        return vo;
+    }
+
+    private String genderText(Integer gender) {
+        if (gender == null) return "未设置";
+        return gender == 0 ? "女" : "男";
     }
 }

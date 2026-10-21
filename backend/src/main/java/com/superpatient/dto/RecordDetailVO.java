@@ -6,8 +6,7 @@ import java.util.List;
 @Data
 public class RecordDetailVO {
     private Long id;
-    private Long patientId;
-    private String patientName;
+    private Long userId;
     private Integer categoryId;
     private String categoryName;
     private String examDate;

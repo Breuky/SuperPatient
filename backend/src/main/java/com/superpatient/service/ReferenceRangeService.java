@@ -2,8 +2,8 @@ package com.superpatient.service;
 
 import com.superpatient.dto.ReferenceRangeRequest;
 import com.superpatient.dto.ReferenceRangeVO;
-import com.superpatient.entity.Patient;
 import com.superpatient.entity.ReferenceRange;
+import com.superpatient.entity.User;
 import com.superpatient.mapper.ReferenceRangeMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,21 +32,21 @@ public class ReferenceRangeService {
     public record Resolved(BigDecimal min, BigDecimal max, String text, String source) {
     }
 
-    /** 患者上下文：性别与年龄（年龄算不出时为 null） */
-    public record PatientContext(Integer gender, Integer age) {
-        public static PatientContext of(Patient patient) {
-            if (patient == null) return new PatientContext(null, null);
-            Integer age = patient.getBirthDate() == null ? null
-                    : (int) ChronoUnit.YEARS.between(patient.getBirthDate(), LocalDate.now());
-            return new PatientContext(patient.getGender(), age);
+    /** 用户上下文：性别与年龄（年龄算不出时为 null） */
+    public record UserContext(Integer gender, Integer age) {
+        public static UserContext of(User user) {
+            if (user == null) return new UserContext(null, null);
+            Integer age = user.getBirthDate() == null ? null
+                    : (int) ChronoUnit.YEARS.between(user.getBirthDate(), LocalDate.now());
+            return new UserContext(user.getGender(), age);
         }
     }
 
-    public Resolved resolve(Integer indicatorId, PatientContext ctx) {
+    public Resolved resolve(Integer indicatorId, UserContext ctx) {
         return match(referenceRangeMapper.findByIndicatorId(indicatorId), ctx);
     }
 
-    public Map<Integer, Resolved> resolveBatch(Collection<Integer> indicatorIds, PatientContext ctx) {
+    public Map<Integer, Resolved> resolveBatch(Collection<Integer> indicatorIds, UserContext ctx) {
         Map<Integer, Resolved> result = new HashMap<>();
         if (indicatorIds == null || indicatorIds.isEmpty()) return result;
 
@@ -65,7 +65,7 @@ public class ReferenceRangeService {
      * 纯匹配逻辑：性别/年龄都需命中，取优先级最高的一条；
      * 同优先级时，条件越具体（性别明确 &gt; 年龄限定）越优先，再比年龄区间更窄。
      */
-    static Resolved match(List<ReferenceRange> rules, PatientContext ctx) {
+    static Resolved match(List<ReferenceRange> rules, UserContext ctx) {
         if (rules == null || rules.isEmpty() || ctx == null) return null;
 
         ReferenceRange best = null;

@@ -25,6 +25,9 @@ CREATE TABLE `user` (
     `nickname`      VARCHAR(50)  DEFAULT NULL COMMENT '用户昵称',
     `avatar_url`    VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
     `phone`         VARCHAR(20)  DEFAULT NULL COMMENT '手机号',
+    `gender`        TINYINT      DEFAULT NULL COMMENT '性别: 0=女 1=男 (参考区间匹配用)',
+    `birth_date`    DATE         DEFAULT NULL COMMENT '出生日期 (参考区间匹配用)',
+    `notes`         TEXT         DEFAULT NULL COMMENT '备注 (既往病史、过敏史等)',
     `created_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
@@ -32,27 +35,7 @@ CREATE TABLE `user` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- ============================================================
--- 2. 患者信息表
--- ============================================================
-DROP TABLE IF EXISTS `patient`;
-CREATE TABLE `patient` (
-    `id`             BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `user_id`        BIGINT       NOT NULL COMMENT '所属用户ID (关联user.id)',
-    `name`           VARCHAR(50)  NOT NULL COMMENT '患者姓名',
-    `gender`         TINYINT      NOT NULL COMMENT '性别: 0=女 1=男',
-    `birth_date`     DATE         DEFAULT NULL COMMENT '出生日期',
-    `diagnosis_date` DATE         DEFAULT NULL COMMENT '确诊日期',
-    `phone`          VARCHAR(20)  DEFAULT NULL COMMENT '联系电话',
-    `notes`          TEXT         DEFAULT NULL COMMENT '备注信息 (如既往病史、过敏史等)',
-    `created_at`     DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at`     DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    PRIMARY KEY (`id`),
-    KEY `idx_user_id` (`user_id`),
-    CONSTRAINT `fk_patient_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='患者信息表';
-
--- ============================================================
--- 3. 检查分类表 (抽血 / CT / MRI 等)
+-- 2. 检查分类表 (抽血 / CT / MRI 等)
 -- ============================================================
 DROP TABLE IF EXISTS `exam_category`;
 CREATE TABLE `exam_category` (
@@ -95,7 +78,7 @@ CREATE TABLE `exam_indicator` (
 DROP TABLE IF EXISTS `exam_record`;
 CREATE TABLE `exam_record` (
     `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `patient_id`  BIGINT       NOT NULL COMMENT '患者ID (关联patient.id)',
+    `user_id`     BIGINT       NOT NULL COMMENT '用户ID (关联user.id)',
     `category_id` INT          NOT NULL COMMENT '检查分类ID (关联exam_category.id)',
     `exam_date`   DATETIME     NOT NULL COMMENT '检查日期时间',
     `hospital`    VARCHAR(100) DEFAULT NULL COMMENT '检查医院',
@@ -105,9 +88,9 @@ CREATE TABLE `exam_record` (
     `created_at`  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at`  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
-    KEY `idx_patient_date` (`patient_id`, `exam_date`),
+    KEY `idx_user_date` (`user_id`, `exam_date`),
     KEY `idx_category` (`category_id`),
-    CONSTRAINT `fk_record_patient` FOREIGN KEY (`patient_id`) REFERENCES `patient` (`id`) ON DELETE CASCADE,
+    CONSTRAINT `fk_record_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE,
     CONSTRAINT `fk_record_category` FOREIGN KEY (`category_id`) REFERENCES `exam_category` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='检查记录表';
 
@@ -277,14 +260,12 @@ SELECT id, NULL, 0, 14, 5, 12, '5-12', '儿童参考区间', 10 FROM `exam_indic
 -- ============================================================
 
 -- 示例账号: demo / demo1234
-INSERT INTO `user` (`id`, `username`, `password_hash`, `nickname`, `avatar_url`) VALUES
-(1, 'demo', '$2a$10$4Y8UtJSTpAitmeigyR5uqOxlb4Ss19zTBY8gQzVsGN2E1jxpoXjje', '示例用户', NULL);
+INSERT INTO `user` (`id`, `username`, `password_hash`, `nickname`, `gender`, `birth_date`, `notes`) VALUES
+(1, 'demo', '$2a$10$4Y8UtJSTpAitmeigyR5uqOxlb4Ss19zTBY8gQzVsGN2E1jxpoXjje', '示例用户', 1, '1985-06-12', '合成示例数据，用于本地开发调试');
 
-INSERT INTO `patient` (`id`, `user_id`, `name`, `gender`, `birth_date`, `diagnosis_date`, `phone`, `notes`) VALUES
-(1, 1, '示例患者', 1, '1985-06-12', NULL, NULL, '合成示例数据，用于本地开发调试');
 
 -- 记录 1: 年度体检（市第一人民医院）
-INSERT INTO `exam_record` (`id`, `patient_id`, `category_id`, `exam_date`, `hospital`, `doctor`, `notes`) VALUES
+INSERT INTO `exam_record` (`id`, `user_id`, `category_id`, `exam_date`, `hospital`, `doctor`, `notes`) VALUES
 (1, 1, 1, '2026-03-28 09:30:00', '市第一人民医院', '王医生', '年度体检，空腹');
 
 INSERT INTO `exam_value` (`record_id`, `indicator_id`, `value_decimal`, `ref_min`, `ref_max`, `is_abnormal`)
@@ -299,7 +280,7 @@ JOIN (SELECT '血红蛋白' nm,   142 val, 120 rmin, 160 rmax, 0 abn
 WHERE i.category_id = 1;
 
 -- 记录 2: 复查（市第二人民医院，参考区间与上一家不同）
-INSERT INTO `exam_record` (`id`, `patient_id`, `category_id`, `exam_date`, `hospital`, `doctor`, `notes`) VALUES
+INSERT INTO `exam_record` (`id`, `user_id`, `category_id`, `exam_date`, `hospital`, `doctor`, `notes`) VALUES
 (2, 1, 1, '2026-05-20 10:00:00', '市第二人民医院', '李医生', '复查');
 
 INSERT INTO `exam_value` (`record_id`, `indicator_id`, `value_decimal`, `ref_min`, `ref_max`, `is_abnormal`)
@@ -314,7 +295,7 @@ JOIN (SELECT '血红蛋白' nm,   138 val, 115 rmin, 150 rmax, 0 abn
 WHERE i.category_id = 1;
 
 -- 记录 3: 影像检查（文本型指标）
-INSERT INTO `exam_record` (`id`, `patient_id`, `category_id`, `exam_date`, `hospital`, `doctor`, `notes`) VALUES
+INSERT INTO `exam_record` (`id`, `user_id`, `category_id`, `exam_date`, `hospital`, `doctor`, `notes`) VALUES
 (3, 1, 3, '2026-06-15 14:00:00', '市第一人民医院', '王医生', '常规复查');
 
 INSERT INTO `exam_value` (`record_id`, `indicator_id`, `value_text`, `is_abnormal`)

@@ -4,7 +4,7 @@
 
 核心不是「录入数值 + 折线图」，而是把**非结构化化验单照片**变成**可比较、可追踪的结构化指标**。
 
-> 演示与开发均使用合成数据，不含任何真实患者信息。
+> 演示与开发均使用合成数据，不含任何真实个人健康信息。
 
 ## 核心链路
 
@@ -59,7 +59,7 @@ POST /api/records           结构化入库，参考区间随值快照保存
 mysql -uroot -p --default-character-set=utf8mb4 < schema.sql
 ```
 
-`schema.sql` 已包含全部表结构与种子数据（8 张表：user / patient / exam_category / exam_indicator / exam_record / exam_value / reference_range / upload_file），**不需要再执行 `db/` 下的迁移脚本** —— 那些只用于升级已有库。
+`schema.sql` 已包含全部表结构与种子数据（7 张表：user / exam_category / exam_indicator / exam_record / exam_value / reference_range / upload_file），**不需要再执行 `db/` 下的迁移脚本** —— 那些只用于升级已有库。
 
 可选：导入合成演示数据（6 次血常规、两家医院、参考区间不同），用于演示趋势页的分段参考带：
 
@@ -111,6 +111,8 @@ export DASHSCOPE_API_KEY=sk-xxx
 ```
 
 ## 几个设计点
+
+**用户即患者本人。** 一个账号就是一份健康档案：性别、出生日期直接挂在 `user` 上，检查记录用 `user_id` 外键。没有"账号→患者→记录"的中间层，归属校验也就退化成一次字段比较。
 
 **参考区间分三级，而不是一个全局常量。** 判定顺序：
 

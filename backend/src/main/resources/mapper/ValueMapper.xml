@@ -37,11 +37,11 @@
         DELETE FROM exam_value WHERE record_id = #{recordId}
     </delete>
 
-    <select id="findByPatientIdAndIndicatorId" resultMap="baseMap">
+    <select id="findByUserIdAndIndicatorId" resultMap="baseMap">
         SELECT v.*, r.exam_date AS exam_date
         FROM exam_value v
         JOIN exam_record r ON v.record_id = r.id
-        WHERE r.patient_id = #{patientId}
+        WHERE r.user_id = #{userId}
           AND v.indicator_id = #{indicatorId}
           AND v.value_decimal IS NOT NULL
         <if test="startDate != null and startDate != ''">
@@ -57,9 +57,8 @@
         SELECT COUNT(DISTINCT v.indicator_id)
         FROM exam_value v
         JOIN exam_record r ON v.record_id = r.id
-        JOIN patient p ON r.patient_id = p.id
         JOIN exam_indicator i ON v.indicator_id = i.id
-        WHERE p.user_id = #{userId} AND i.status = 1
+        WHERE r.user_id = #{userId} AND i.status = 1
     </select>
 
 </mapper>

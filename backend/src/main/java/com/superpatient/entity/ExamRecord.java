@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 @Data
 public class ExamRecord {
     private Long id;
-    private Long patientId;
+    private Long userId;
     private Integer categoryId;
     private LocalDateTime examDate;
     private String hospital;

@@ -1,6 +1,5 @@
 package com.superpatient.mapper;
 
-import com.superpatient.dto.PatientDetailVO;
 import com.superpatient.dto.RecordListVO;
 import com.superpatient.entity.ExamRecord;
 import org.apache.ibatis.annotations.Mapper;
@@ -10,7 +9,7 @@ import java.util.List;
 
 @Mapper
 public interface RecordMapper {
-    List<RecordListVO> page(@Param("patientId") Long patientId,
+    List<RecordListVO> page(@Param("userId") Long userId,
                             @Param("categoryId") Integer categoryId,
                             @Param("startDate") String startDate,
                             @Param("endDate") String endDate);
@@ -19,5 +18,4 @@ public interface RecordMapper {
     int update(ExamRecord record);
     int deleteById(@Param("id") Long id);
     int countByUserId(@Param("userId") Long userId);
-    List<PatientDetailVO.CategoryStat> getCategoryStats(@Param("patientId") Long patientId);
 }

@@ -13,12 +13,12 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class ReferenceRangeServiceTest {
 
-    private final ReferenceRangeService.PatientContext maleAdult =
-            new ReferenceRangeService.PatientContext(1, 30);
-    private final ReferenceRangeService.PatientContext femaleAdult =
-            new ReferenceRangeService.PatientContext(0, 30);
-    private final ReferenceRangeService.PatientContext boy =
-            new ReferenceRangeService.PatientContext(1, 10);
+    private final ReferenceRangeService.UserContext maleAdult =
+            new ReferenceRangeService.UserContext(1, 30);
+    private final ReferenceRangeService.UserContext femaleAdult =
+            new ReferenceRangeService.UserContext(0, 30);
+    private final ReferenceRangeService.UserContext boy =
+            new ReferenceRangeService.UserContext(1, 10);
 
     private final List<ReferenceRange> hemoglobin = List.of(
             rule(1, 130, 175, 10, 18, null),
@@ -41,8 +41,8 @@ class ReferenceRangeServiceTest {
 
     @Test
     void skipsAgeBoundedRulesWhenAgeUnknown() {
-        ReferenceRangeService.PatientContext unknownAge =
-                new ReferenceRangeService.PatientContext(1, null);
+        ReferenceRangeService.UserContext unknownAge =
+                new ReferenceRangeService.UserContext(1, null);
         assertNull(ReferenceRangeService.match(hemoglobin, unknownAge),
                 "算不出年龄时不能套用限定年龄的区间，宁可回落默认值");
     }
@@ -74,7 +74,7 @@ class ReferenceRangeServiceTest {
                 rule(null, 100, 200, 10, 0, 17),
                 rule(null, 105, 190, 10, 0, 6)
         );
-        ReferenceRangeService.PatientContext kid = new ReferenceRangeService.PatientContext(null, 3);
+        ReferenceRangeService.UserContext kid = new ReferenceRangeService.UserContext(null, 3);
         assertEquals(0, new BigDecimal("105").compareTo(
                 ReferenceRangeService.match(rules, kid).min()));
     }
@@ -82,7 +82,7 @@ class ReferenceRangeServiceTest {
     @Test
     void returnsNullWhenNothingApplies() {
         assertNull(ReferenceRangeService.match(List.of(), maleAdult));
-        assertNull(ReferenceRangeService.match(hemoglobin, new ReferenceRangeService.PatientContext(null, 30)),
+        assertNull(ReferenceRangeService.match(hemoglobin, new ReferenceRangeService.UserContext(null, 30)),
                 "患者性别未知时，性别专用规则不应命中");
     }
 

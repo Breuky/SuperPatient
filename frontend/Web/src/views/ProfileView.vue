@@ -2,14 +2,23 @@
   <div>
     <el-card v-loading="loading">
       <el-descriptions :column="2" border title="我的信息">
-        <el-descriptions-item label="姓名">{{ patient?.name || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="性别">{{ patient?.genderText || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="年龄">{{ patient?.age }}岁</el-descriptions-item>
-        <el-descriptions-item label="出生日期">{{ patient?.birthDate || '-' }}</el-descriptions-item>
-        <el-descriptions-item label="确诊日期">{{ patient?.diagnosisDate || '未填写' }}</el-descriptions-item>
-        <el-descriptions-item label="手机号">{{ patient?.phone || '-' }}</el-descriptions-item>
-        <el-descriptions-item v-if="patient?.notes" label="备注" :span="2">{{ patient.notes }}</el-descriptions-item>
+        <el-descriptions-item label="昵称">{{ profile?.nickname || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="用户名">{{ profile?.username || '-' }}</el-descriptions-item>
+        <el-descriptions-item label="性别">{{ profile?.genderText || '未设置' }}</el-descriptions-item>
+        <el-descriptions-item label="年龄">{{ profile?.age != null ? profile.age + ' 岁' : '-' }}</el-descriptions-item>
+        <el-descriptions-item label="出生日期">{{ profile?.birthDate || '未填写' }}</el-descriptions-item>
+        <el-descriptions-item label="手机号">{{ profile?.phone || '未填写' }}</el-descriptions-item>
+        <el-descriptions-item v-if="profile?.notes" label="备注" :span="2">{{ profile.notes }}</el-descriptions-item>
       </el-descriptions>
+
+      <el-alert
+        v-if="!profile?.gender || !profile?.birthDate"
+        type="warning"
+        :closable="false"
+        show-icon
+        style="margin-top:12px"
+        title="补全性别和出生日期后，参考区间会按你的情况匹配，异常判定更准确"
+      />
 
       <div style="margin-top:12px">
         <el-button type="success" @click="openEdit">编辑信息</el-button>
@@ -48,20 +57,18 @@
 
     <el-dialog v-model="showEdit" title="编辑个人信息" width="480px">
       <el-form label-position="top">
-        <el-form-item label="姓名" required>
-          <el-input v-model="editForm.name" placeholder="您的姓名" />
+        <el-form-item label="昵称">
+          <el-input v-model="editForm.nickname" placeholder="显示名称" />
         </el-form-item>
         <el-form-item label="性别">
           <el-radio-group v-model="editForm.gender">
             <el-radio :value="1">男</el-radio>
             <el-radio :value="0">女</el-radio>
           </el-radio-group>
+          <div class="field-tip">参考区间按性别匹配，填错会让异常判定偏掉</div>
         </el-form-item>
         <el-form-item label="出生日期">
           <el-date-picker v-model="editForm.birthDate" type="date" value-format="YYYY-MM-DD" style="width:100%" />
-        </el-form-item>
-        <el-form-item label="确诊日期">
-          <el-date-picker v-model="editForm.diagnosisDate" type="date" value-format="YYYY-MM-DD" style="width:100%" />
         </el-form-item>
         <el-form-item label="手机号">
           <el-input v-model="editForm.phone" placeholder="联系电话" />
@@ -72,7 +79,7 @@
       </el-form>
       <template #footer>
         <el-button @click="showEdit = false">取消</el-button>
-        <el-button type="success" @click="handleSave">保存</el-button>
+        <el-button type="success" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -83,36 +90,41 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
-import { myApi } from '@/api/my'
-
 
 const router = useRouter()
 const auth = useAuthStore()
-const patient = ref(null)
+const profile = ref(null)
 const showEdit = ref(false)
 const loading = ref(true)
+const saving = ref(false)
 
-const editForm = reactive({ name: '', gender: 1, birthDate: '', diagnosisDate: '', phone: '', notes: '' })
+const editForm = reactive({ nickname: '', gender: null, birthDate: '', phone: '', notes: '' })
 const stats = reactive({ recordCount: 0, indicatorCount: 0 })
 
 function openEdit() {
-  if (!patient.value) return
-  const p = patient.value
-  editForm.name = p.name || ''
-  editForm.gender = p.gender ?? 1
+  if (!profile.value) return
+  const p = profile.value
+  editForm.nickname = p.nickname || ''
+  editForm.gender = p.gender ?? null
   editForm.birthDate = p.birthDate || ''
-  editForm.diagnosisDate = p.diagnosisDate || ''
   editForm.phone = p.phone || ''
   editForm.notes = p.notes || ''
   showEdit.value = true
 }
 
 async function handleSave() {
+  saving.value = true
   try {
-    await myApi.updateMyPatient({ ...editForm })
+    const res = await authApi.updateProfile({ ...editForm, birthDate: editForm.birthDate || null })
+    profile.value = res.data
+    auth.user = res.data
+    localStorage.setItem('user', JSON.stringify(res.data))
     showEdit.value = false
-    await fetchPatient()
-  } catch (e) { alert(e.message) }
+  } catch (e) {
+    alert(e.message)
+  } finally {
+    saving.value = false
+  }
 }
 
 function handleLogout() {
@@ -120,16 +132,16 @@ function handleLogout() {
   router.push('/login')
 }
 
-async function fetchPatient() {
+async function fetchProfile() {
   try {
-    const res = await myApi.getMyPatient()
-    patient.value = res.data
+    const res = await authApi.getProfile()
+    profile.value = res.data
   } catch (e) { console.error(e) }
 }
 
 onMounted(async () => {
   loading.value = true
-  await fetchPatient()
+  await fetchProfile()
   try {
     const res = await authApi.getStatistics()
     Object.assign(stats, res.data)
@@ -140,4 +152,5 @@ onMounted(async () => {
 
 <style scoped>
 .inline-menu { border-right: none; }
+.field-tip { font-size: 12px; color: #999; margin-top: 4px; }
 </style>

@@ -11,8 +11,8 @@ public interface ValueMapper {
     List<ExamValue> findByRecordId(@Param("recordId") Long recordId);
     int batchInsert(@Param("list") List<ExamValue> values);
     int deleteByRecordId(@Param("recordId") Long recordId);
-    List<ExamValue> findByPatientIdAndIndicatorId(@Param("patientId") Long patientId,
-                                                   @Param("indicatorId") Integer indicatorId,
+    List<ExamValue> findByUserIdAndIndicatorId(@Param("userId") Long userId,
+                                               @Param("indicatorId") Integer indicatorId,
                                                    @Param("startDate") String startDate,
                                                    @Param("endDate") String endDate);
     int countDistinctIndicatorsByUserId(@Param("userId") Long userId);

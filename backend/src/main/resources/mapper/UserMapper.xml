@@ -9,6 +9,9 @@
         <result column="nickname" property="nickname"/>
         <result column="avatar_url" property="avatarUrl"/>
         <result column="phone" property="phone"/>
+        <result column="gender" property="gender"/>
+        <result column="birth_date" property="birthDate"/>
+        <result column="notes" property="notes"/>
         <result column="created_at" property="createdAt"/>
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
@@ -22,18 +25,19 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user (username, password_hash, nickname, avatar_url, phone)
-        VALUES (#{username}, #{passwordHash}, #{nickname}, #{avatarUrl}, #{phone})
+        INSERT INTO user (username, password_hash, nickname, avatar_url, phone, gender, birth_date, notes)
+        VALUES (#{username}, #{passwordHash}, #{nickname}, #{avatarUrl}, #{phone}, #{gender}, #{birthDate}, #{notes})
     </insert>
 
+    <!-- 个人信息全量覆盖：性别/生日允许被清空，不能用 <if> 判断 -->
     <update id="update">
         UPDATE user
-        <set>
-            <if test="nickname != null">nickname = #{nickname},</if>
-            <if test="avatarUrl != null">avatar_url = #{avatarUrl},</if>
-            <if test="phone != null">phone = #{phone},</if>
-            <if test="passwordHash != null">password_hash = #{passwordHash},</if>
-        </set>
+        SET nickname = #{nickname},
+            avatar_url = #{avatarUrl},
+            phone = #{phone},
+            gender = #{gender},
+            birth_date = #{birthDate},
+            notes = #{notes}
         WHERE id = #{id}
     </update>
 
