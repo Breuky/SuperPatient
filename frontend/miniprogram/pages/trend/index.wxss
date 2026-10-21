@@ -1,0 +1,155 @@
+/* pages/trend/index.wxss */
+
+.page-container {
+  padding-bottom: 40rpx;
+}
+
+.section {
+  margin-bottom: 12rpx;
+}
+
+.section-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: var(--text-primary);
+  padding: 20rpx 24rpx 12rpx;
+}
+
+/* 选择器 */
+.picker-card {
+  margin: 0 24rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 28rpx;
+}
+
+.picker-arrow {
+  color: var(--text-hint);
+  font-size: 22rpx;
+}
+
+/* 指标网格 */
+.indicator-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+  padding: 0 24rpx;
+}
+
+.indicator-item {
+  padding: 14rpx 24rpx;
+  background: #fff;
+  border-radius: var(--radius-sm);
+  border: 2rpx solid var(--border-color);
+}
+
+.indicator-item.active {
+  border-color: var(--primary);
+  background: #F0FFF4;
+}
+
+.ind-item-name {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.ind-item-meta {
+  display: block;
+  font-size: 20rpx;
+  color: var(--text-hint);
+  margin-top: 4rpx;
+}
+
+/* 图表 */
+.chart-section {
+  margin-top: 16rpx;
+}
+
+.chart-header {
+  padding: 0 24rpx 12rpx;
+}
+
+.chart-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.chart-unit {
+  font-size: 24rpx;
+  color: var(--text-hint);
+  margin-left: 16rpx;
+}
+
+.chart-canvas-wrap {
+  margin: 0 24rpx;
+  padding: 16rpx;
+}
+
+.trend-canvas {
+  width: 100%;
+  height: 400rpx;
+}
+
+/* 图例 */
+.chart-legend {
+  display: flex;
+  align-items: center;
+  gap: 32rpx;
+  padding: 12rpx 24rpx;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  font-size: 22rpx;
+  color: var(--text-hint);
+}
+
+.legend-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+}
+
+.legend-dot.normal { background: #07C160; }
+.legend-dot.abnormal { background: #FA5151; }
+
+.legend-zone {
+  width: 24rpx;
+  height: 16rpx;
+  background: rgba(7, 193, 96, 0.15);
+  border-radius: 4rpx;
+}
+
+/* 数据列表 */
+.points-list {
+  padding: 0 24rpx;
+}
+
+.point-item {
+  margin: 0 0 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18rpx 24rpx;
+}
+
+.point-date {
+  font-size: 26rpx;
+  color: var(--text-primary);
+}
+
+.point-value {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.point-value.abnormal {
+  color: var(--danger);
+}

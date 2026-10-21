@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.superpatient.mapper.RecordMapper">
+
+    <resultMap id="baseMap" type="com.superpatient.entity.ExamRecord">
+        <id column="id" property="id"/>
+        <result column="patient_id" property="patientId"/>
+        <result column="category_id" property="categoryId"/>
+        <result column="exam_date" property="examDate"/>
+        <result column="hospital" property="hospital"/>
+        <result column="doctor" property="doctor"/>
+        <result column="notes" property="notes"/>
+        <result column="image_url" property="imageUrl"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="page" resultType="com.superpatient.dto.RecordListVO">
+        SELECT
+            r.id,
+            r.category_id AS categoryId,
+            c.name AS categoryName,
+            DATE_FORMAT(r.exam_date, '%Y-%m-%dT%H:%i:%s') AS examDate,
+            r.hospital,
+            r.doctor,
+            r.image_url AS imageUrl,
+            (SELECT COUNT(*) FROM exam_value v WHERE v.record_id = r.id) AS totalIndicators,
+            (SELECT COUNT(*) FROM exam_value v WHERE v.record_id = r.id AND v.is_abnormal != 0) AS abnormalCount
+        FROM exam_record r
+        JOIN exam_category c ON r.category_id = c.id
+        WHERE r.patient_id = #{patientId}
+        <if test="categoryId != null">
+            AND r.category_id = #{categoryId}
+        </if>
+        <if test="startDate != null and startDate != ''">
+            AND r.exam_date >= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND r.exam_date &lt;= DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+        </if>
+        ORDER BY r.exam_date DESC
+    </select>
+
+    <select id="findById" resultMap="baseMap">
+        SELECT * FROM exam_record WHERE id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO exam_record (patient_id, category_id, exam_date, hospital, doctor, notes, image_url)
+        VALUES (#{patientId}, #{categoryId}, #{examDate}, #{hospital}, #{doctor}, #{notes}, #{imageUrl})
+    </insert>
+
+    <update id="update">
+        UPDATE exam_record
+        <set>
+            <if test="examDate != null">exam_date = #{examDate},</if>
+            <if test="hospital != null">hospital = #{hospital},</if>
+            <if test="doctor != null">doctor = #{doctor},</if>
+            <if test="notes != null">notes = #{notes},</if>
+            <if test="imageUrl != null">image_url = #{imageUrl},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM exam_record WHERE id = #{id}
+    </delete>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*)
+        FROM exam_record r
+        JOIN patient p ON r.patient_id = p.id
+        WHERE p.user_id = #{userId}
+    </select>
+
+    <select id="getCategoryStats" resultType="com.superpatient.dto.PatientDetailVO$CategoryStat">
+        SELECT
+            c.name AS categoryName,
+            COUNT(r.id) AS count,
+            DATE_FORMAT(MAX(r.exam_date), '%Y-%m-%d') AS lastDate
+        FROM exam_record r
+        JOIN exam_category c ON r.category_id = c.id
+        WHERE r.patient_id = #{patientId}
+        GROUP BY c.name
+        ORDER BY count DESC
+    </select>
+
+</mapper>

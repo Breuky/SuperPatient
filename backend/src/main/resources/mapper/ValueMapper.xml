@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.superpatient.mapper.ValueMapper">
+
+    <resultMap id="baseMap" type="com.superpatient.entity.ExamValue">
+        <id column="id" property="id"/>
+        <result column="record_id" property="recordId"/>
+        <result column="indicator_id" property="indicatorId"/>
+        <result column="value_decimal" property="valueDecimal"/>
+        <result column="value_text" property="valueText"/>
+        <result column="is_abnormal" property="isAbnormal"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <select id="findByRecordId" resultMap="baseMap">
+        SELECT * FROM exam_value WHERE record_id = #{recordId}
+    </select>
+
+    <insert id="batchInsert">
+        INSERT INTO exam_value (record_id, indicator_id, value_decimal, value_text, is_abnormal)
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (#{item.recordId}, #{item.indicatorId}, #{item.valueDecimal}, #{item.valueText}, #{item.isAbnormal})
+        </foreach>
+    </insert>
+
+    <delete id="deleteByRecordId">
+        DELETE FROM exam_value WHERE record_id = #{recordId}
+    </delete>
+
+    <select id="findByPatientIdAndIndicatorId" resultMap="baseMap">
+        SELECT v.*, r.exam_date AS exam_date
+        FROM exam_value v
+        JOIN exam_record r ON v.record_id = r.id
+        WHERE r.patient_id = #{patientId}
+          AND v.indicator_id = #{indicatorId}
+          AND v.value_decimal IS NOT NULL
+        <if test="startDate != null and startDate != ''">
+            AND r.exam_date >= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            AND r.exam_date &lt;= DATE_ADD(#{endDate}, INTERVAL 1 DAY)
+        </if>
+        ORDER BY r.exam_date ASC
+    </select>
+
+    <select id="countDistinctIndicatorsByUserId" resultType="int">
+        SELECT COUNT(DISTINCT v.indicator_id)
+        FROM exam_value v
+        JOIN exam_record r ON v.record_id = r.id
+        JOIN patient p ON r.patient_id = p.id
+        JOIN exam_indicator i ON v.indicator_id = i.id
+        WHERE p.user_id = #{userId} AND i.status = 1
+    </select>
+
+</mapper>

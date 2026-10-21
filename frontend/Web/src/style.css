@@ -1,0 +1,81 @@
+/* ========== CSS Variables ========== */
+:root {
+  --green: #07C160;
+  --green-light: #E8F8EE;
+  --green-dark: #06AD56;
+  --red: #FA5151;
+  --red-light: #FFE8E8;
+  --blue: #1890FF;
+  --blue-light: #E6F4FF;
+  --orange: #FA9D3B;
+  --orange-light: #FFF3E8;
+
+  --text-primary: #1A1A1A;
+  --text-secondary: #666666;
+  --text-hint: #999999;
+  --text-disabled: #B2B2B2;
+
+  --bg-primary: #F5F5F5;
+  --bg-white: #FFFFFF;
+
+  --border: #EBEBEB;
+  --border-light: #F0F0F0;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.10);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+
+  --font-xs: 11px;
+  --font-sm: 12px;
+  --font-base: 14px;
+  --font-md: 15px;
+  --font-lg: 17px;
+  --font-xl: 20px;
+  --font-2xl: 24px;
+}
+
+/* ========== Reset ========== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-text-size-adjust: 100%; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: var(--font-base);
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; text-decoration: none; }
+img { max-width: 100%; display: block; }
+
+/* ========== Utility Classes ========== */
+.text-green { color: var(--green); }
+.text-red { color: var(--red); }
+.text-blue { color: var(--blue); }
+.text-hint { color: var(--text-hint); }
+.text-secondary { color: var(--text-secondary); }
+.text-center { text-align: center; }
+.font-bold { font-weight: 600; }
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-12 { margin-bottom: 12px; }
+.mb-16 { margin-bottom: 16px; }
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-thumb { background: #c0c4cc; border-radius: 3px; }
+
+/* ========== Abnormal value highlights ========== */
+.value-abnormal-high { color: var(--red); font-weight: 600; }
+.value-abnormal-low { color: var(--blue); font-weight: 600; }
+.value-normal { color: var(--green); }
+
+/* ========== Element Plus overrides ========== */
+.el-card { margin-bottom: 16px; }
+.el-card__header { padding: 12px 16px; font-weight: 600; }

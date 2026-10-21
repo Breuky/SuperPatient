@@ -1,0 +1,166 @@
+<!-- pages/patient-detail/index.wxml - 患者详情页 -->
+<view class="page-container" wx:if="{{patient}}">
+  <!-- 患者信息卡片 -->
+  <view class="info-card">
+    <view class="info-header">
+      <view class="info-avatar {{patient.gender === 1 ? 'avatar-male' : 'avatar-female'}}">
+        {{patient.name[0]}}
+      </view>
+      <view class="info-main">
+        <view class="info-name">
+          {{patient.name}}
+          <text class="info-gender">{{patient.genderText}}</text>
+          <text class="info-age" wx:if="{{patient.age}}">{{patient.age}}岁</text>
+        </view>
+        <view class="info-meta" wx:if="{{patient.diagnosisDate}}">
+          确诊于 {{patient.diagnosisDate}}
+        </view>
+        <view class="info-meta" wx:if="{{patient.notes}}">
+          {{patient.notes}}
+        </view>
+      </view>
+      <view class="info-actions">
+        <text class="action-btn" bindtap="openEditModal">✏️</text>
+        <text class="action-btn" bindtap="onDeletePatient">🗑️</text>
+      </view>
+    </view>
+
+    <!-- 统计 -->
+    <view class="stats-row" wx:if="{{patient.stats}}">
+      <view class="stat-block">
+        <text class="stat-num">{{patient.stats.totalExams}}</text>
+        <text class="stat-label">总检查</text>
+      </view>
+      <view class="stat-block">
+        <text class="stat-num">{{patient.stats.lastExamDate || '暂无'}}</text>
+        <text class="stat-label">最近检查</text>
+      </view>
+      <view class="stat-block">
+        <text class="stat-num">{{patient.stats.categoryStats ? patient.stats.categoryStats.length : 0}}</text>
+        <text class="stat-label">检查类型</text>
+      </view>
+    </view>
+
+    <!-- 分类统计 -->
+    <view class="category-stats" wx:if="{{patient.stats && patient.stats.categoryStats}}">
+      <view wx:for="{{patient.stats.categoryStats}}" wx:key="categoryName" class="cat-stat-tag">
+        {{item.categoryName}} {{item.count}}次
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作栏 -->
+  <view class="action-bar">
+    <button class="btn-primary" bindtap="onAddRecord">+ 新增检查</button>
+    <button class="btn-outline" bindtap="onViewTrend">📈 趋势</button>
+    <button class="btn-outline" bindtap="onExport">📥 导出</button>
+  </view>
+
+  <!-- 分类筛选 -->
+  <scroll-view class="category-filter" scroll-x enable-flex>
+    <view class="filter-item {{activeCategoryId === null ? 'active' : ''}}" bindtap="onCategoryChange" data-id="{{null}}">全部</view>
+    <view
+      wx:for="{{categories}}"
+      wx:key="id"
+      class="filter-item {{activeCategoryId === item.id ? 'active' : ''}}"
+      data-id="{{item.id}}"
+      bindtap="onCategoryChange"
+    >{{item.name}}</view>
+  </scroll-view>
+
+  <!-- 日期筛选 -->
+  <view class="date-filter">
+    <picker mode="date" value="{{startDate}}" bindchange="onStartDateChange">
+      <view class="date-picker {{startDate ? '' : 'placeholder'}}">{{startDate || '起始日期'}}</view>
+    </picker>
+    <text class="date-sep">至</text>
+    <picker mode="date" value="{{endDate}}" bindchange="onEndDateChange">
+      <view class="date-picker {{endDate ? '' : 'placeholder'}}">{{endDate || '截止日期'}}</view>
+    </picker>
+  </view>
+
+  <!-- 检查记录列表 -->
+  <view wx:if="{{records.length > 0}}" class="record-list">
+    <view
+      wx:for="{{records}}"
+      wx:key="id"
+      class="record-card"
+      data-id="{{item.id}}"
+      bindtap="onRecordTap"
+    >
+      <view class="record-header">
+        <text class="record-category">{{item.categoryName}}</text>
+        <view class="record-tags">
+          <text wx:if="{{item.abnormalCount > 0}}" class="tag-abnormal-high">
+            {{item.abnormalCount}}项异常
+          </text>
+          <text wx:else class="tag-normal">正常</text>
+        </view>
+      </view>
+      <view class="record-body">
+        <text class="record-date">📅 {{item.examDate}}</text>
+        <text class="record-hospital" wx:if="{{item.hospital}}">🏥 {{item.hospital}}</text>
+      </view>
+      <view class="record-footer" wx:if="{{item.doctor}}">
+        <text class="record-doctor">👨‍⚕️ {{item.doctor}}</text>
+        <text class="record-count">共 {{item.totalIndicators}} 项指标</text>
+      </view>
+      <view class="arrow-right">›</view>
+    </view>
+  </view>
+
+  <view wx:elif="{{!loading}}" class="empty-state">
+    <text class="empty-icon">📋</text>
+    <text class="empty-text">暂无检查记录</text>
+  </view>
+
+  <view wx:if="{{loading}}" class="load-more">加载中...</view>
+</view>
+
+<!-- 编辑患者弹窗 -->
+<view wx:if="{{showEditModal}}" class="modal-mask" bindtap="closeEditModal">
+  <view class="modal-content" catchtap="">
+    <view class="modal-header">
+      <text class="modal-title">编辑患者</text>
+      <text class="modal-close" bindtap="closeEditModal">✕</text>
+    </view>
+
+    <view class="modal-body">
+      <view class="form-item">
+        <text class="form-label">姓名 <text class="required">*</text></text>
+        <input class="form-input" value="{{editForm.name}}" data-field="name" bindinput="onEditFieldChange"/>
+      </view>
+      <view class="form-item">
+        <text class="form-label">性别</text>
+        <view class="gender-switch">
+          <view class="gender-option {{editForm.gender === 1 ? 'active' : ''}}" data-gender="1" bindtap="onEditGenderChange">男</view>
+          <view class="gender-option {{editForm.gender === 0 ? 'active' : ''}}" data-gender="0" bindtap="onEditGenderChange">女</view>
+        </view>
+      </view>
+      <view class="form-item">
+        <text class="form-label">出生日期</text>
+        <picker mode="date" value="{{editForm.birthDate}}" data-field="birthDate" bindchange="onEditDateChange">
+          <view class="form-picker {{editForm.birthDate ? '' : 'placeholder'}}">{{editForm.birthDate || '请选择'}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <text class="form-label">确诊日期</text>
+        <picker mode="date" value="{{editForm.diagnosisDate}}" data-field="diagnosisDate" bindchange="onEditDateChange">
+          <view class="form-picker {{editForm.diagnosisDate ? '' : 'placeholder'}}">{{editForm.diagnosisDate || '请选择'}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <text class="form-label">联系电话</text>
+        <input class="form-input" type="number" value="{{editForm.phone}}" data-field="phone" bindinput="onEditFieldChange"/>
+      </view>
+      <view class="form-item">
+        <text class="form-label">备注</text>
+        <textarea class="form-textarea" value="{{editForm.notes}}" data-field="notes" bindinput="onEditFieldChange" maxlength="500"/>
+      </view>
+    </view>
+
+    <view class="modal-footer">
+      <button class="btn-primary" bindtap="submitEdit" loading="{{submitting}}" disabled="{{submitting}}">保存修改</button>
+    </view>
+  </view>
+</view>

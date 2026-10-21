@@ -1,0 +1,122 @@
+<!-- pages/record-add/index.wxml - 新增检查记录 -->
+<view class="page-container">
+  <!-- 分类选择 -->
+  <view class="section">
+    <view class="section-title">检查分类</view>
+    <scroll-view class="category-tabs" scroll-x enable-flex>
+      <view
+        wx:for="{{categories}}"
+        wx:key="id"
+        class="cat-tab {{selectedCategoryId === item.id ? 'active' : ''}}"
+        data-id="{{item.id}}"
+        bindtap="onCategoryChange"
+      >{{item.name}}</view>
+    </scroll-view>
+  </view>
+
+  <!-- 基础信息 -->
+  <view class="section">
+    <view class="section-title">基础信息</view>
+    <view class="form-group card">
+      <!-- 检查日期 -->
+      <view class="form-row">
+        <text class="row-label">检查日期</text>
+        <picker mode="date" value="{{examDate}}" bindchange="onDateChange">
+          <view class="row-value">{{examDate || '请选择日期'}}</view>
+        </picker>
+      </view>
+      <!-- 时 分 -->
+      <view class="form-row">
+        <text class="row-label">检查时间</text>
+        <picker mode="time" value="{{examDate}}" bindchange="onDateChange">
+          <view class="row-value">{{examDate || '请选择时间'}}</view>
+        </picker>
+      </view>
+      <!-- 医院 -->
+      <view class="form-row">
+        <text class="row-label">医院</text>
+        <input class="row-input" placeholder="检查医院（选填）" value="{{hospital}}" data-field="hospital" bindinput="onFieldChange"/>
+      </view>
+      <!-- 医生 -->
+      <view class="form-row">
+        <text class="row-label">医生</text>
+        <input class="row-input" placeholder="主治医生（选填）" value="{{doctor}}" data-field="doctor" bindinput="onFieldChange"/>
+      </view>
+      <!-- 备注 -->
+      <view class="form-row">
+        <text class="row-label">备注</text>
+        <input class="row-input" placeholder="随访周期、医嘱等（选填）" value="{{notes}}" data-field="notes" bindinput="onFieldChange"/>
+      </view>
+    </view>
+  </view>
+
+  <!-- 指标值 -->
+  <view class="section">
+    <view class="section-title">
+      检查指标
+      <text class="section-hint">（正常范围仅供参考，系统自动判断异常）</text>
+    </view>
+
+    <view wx:if="{{indicators.length > 0}}" class="indicators-list">
+      <view wx:for="{{indicators}}" wx:key="id" class="indicator-card card">
+        <view class="indicator-header">
+          <text class="indicator-name">{{item.name}}</text>
+          <text wx:if="{{item.valueType === 'number' && item.normalMin != null}}" class="indicator-range">
+            正常: {{item.normalMin}} ~ {{item.normalMax}} {{item.unit}}
+          </text>
+        </view>
+
+        <!-- 数值型 -->
+        <view wx:if="{{item.valueType === 'number'}}" class="indicator-input-row">
+          <input
+            class="indicator-input"
+            type="digit"
+            placeholder="输入数值"
+            data-id="{{item.id}}"
+            data-type="number"
+            bindinput="onValueChange"
+          />
+          <text class="indicator-unit" wx:if="{{item.unit}}">{{item.unit}}</text>
+        </view>
+
+        <!-- 文本型 -->
+        <view wx:else class="indicator-input-row">
+          <textarea
+            class="indicator-textarea"
+            placeholder="输入描述文字..."
+            data-id="{{item.id}}"
+            data-type="text"
+            bindinput="onValueChange"
+          />
+        </view>
+      </view>
+    </view>
+
+    <view wx:elif="{{!loadingCategories && selectedCategoryId}}" class="empty-state">
+      <text class="empty-icon">📋</text>
+      <text class="empty-text">该分类下暂未配置指标</text>
+    </view>
+  </view>
+
+  <!-- 报告照片 -->
+  <view class="section">
+    <view class="section-title">报告照片（选填）</view>
+    <view class="card">
+      <view wx:if="{{imageUrl}}" class="image-preview" bindtap="onPreviewImage">
+        <image src="{{imageUrl}}" mode="aspectFill" class="preview-img"/>
+        <view class="image-remove" bindtap="onRemoveImage">✕</view>
+      </view>
+      <view wx:else class="upload-btn" bindtap="onChooseImage">
+        <text class="upload-icon">📷</text>
+        <text class="upload-text">拍照或选择照片</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="submit-bar">
+    <button class="btn-primary" bindtap="onSubmit" loading="{{submitting}}" disabled="{{submitting}}">
+      确认提交
+    </button>
+  </view>
+</view>

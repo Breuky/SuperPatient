@@ -1,0 +1,43 @@
+server:
+  port: 8080
+
+spring:
+  # 本地真实凭据放在 backend/application-local.yml（已被 .gitignore 忽略），
+  # 模板见同目录 application-local.yml.example
+  config:
+    import: optional:file:./application-local.yml
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/super_patient?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 100MB
+
+app:
+  jwt:
+    # 生产环境必须通过环境变量 JWT_SECRET 覆盖
+    secret: ${JWT_SECRET:superpatient-dev-secret}
+
+mybatis:
+  configuration:
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    map-underscore-to-camel-case: true
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.superpatient.entity
+
+logging:
+  level:
+    com.superpatient: debug
+    org.springframework.jdbc.support.JdbcTransactionManager: debug
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+  api-docs:
+    path: /v3/api-docs

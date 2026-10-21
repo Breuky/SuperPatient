@@ -1,0 +1,119 @@
+<!-- pages/record-detail/index.wxml - 检查记录详情 -->
+<view class="page-container" wx:if="{{record && !editMode}}">
+  <!-- 报告照片 -->
+  <view wx:if="{{record.imageUrl}}" class="image-section" bindtap="onPreviewImage">
+    <image src="{{record.imageUrl}}" mode="widthFix" class="report-image"/>
+    <view class="image-tip">点击查看大图</view>
+  </view>
+
+  <!-- 记录信息 -->
+  <view class="info-section card">
+    <view class="info-row">
+      <text class="info-label">检查分类</text>
+      <text class="info-value">{{record.categoryName}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-label">检查时间</text>
+      <text class="info-value">{{record.examDate}}</text>
+    </view>
+    <view wx:if="{{record.hospital}}" class="info-row">
+      <text class="info-label">检查医院</text>
+      <text class="info-value">{{record.hospital}}</text>
+    </view>
+    <view wx:if="{{record.doctor}}" class="info-row">
+      <text class="info-label">主治医生</text>
+      <text class="info-value">{{record.doctor}}</text>
+    </view>
+    <view wx:if="{{record.notes}}" class="info-row">
+      <text class="info-label">备注</text>
+      <text class="info-value note-text">{{record.notes}}</text>
+    </view>
+  </view>
+
+  <!-- 指标值列表 -->
+  <view class="section">
+    <view class="section-title">检查指标</view>
+    <view wx:if="{{record.values && record.values.length > 0}}" class="values-list">
+      <view wx:for="{{record.values}}" wx:key="indicatorId" class="value-card card">
+        <view class="value-header">
+          <text class="value-name">{{item.indicatorName}}</text>
+          <view class="{{item.isAbnormal === 1 ? 'tag-abnormal-high' : item.isAbnormal === 2 ? 'tag-abnormal-low' : 'tag-normal'}}">
+            {{item.abnormalText}}
+          </view>
+        </view>
+        <view class="value-body">
+          <text wx:if="{{item.valueType === 'number'}}" class="value-num {{item.isAbnormal !== 0 ? 'value-abnormal' : ''}}">
+            {{item.valueDecimal}}
+            <text class="value-unit" wx:if="{{item.unit}}">{{item.unit}}</text>
+          </text>
+          <text wx:else class="value-text">{{item.valueText}}</text>
+          <view wx:if="{{item.valueType === 'number' && item.normalMin != null}}" class="value-range">
+            正常范围: {{item.normalMin}} ~ {{item.normalMax}} {{item.unit}}
+          </view>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 操作 -->
+  <view class="action-footer">
+    <button class="btn-outline" bindtap="onEdit">✏️ 修改</button>
+    <button class="btn-danger" bindtap="onDelete">🗑️ 删除</button>
+  </view>
+</view>
+
+<!-- 编辑模式 -->
+<view class="page-container" wx:if="{{editMode}}">
+  <view class="edit-header">
+    <text class="section-title">编辑检查记录</text>
+  </view>
+
+  <view class="card">
+    <view class="form-row">
+      <text class="row-label">检查时间</text>
+      <input class="row-input" value="{{editForm.examDate}}" data-field="examDate" bindinput="onEditFieldChange"/>
+    </view>
+    <view class="form-row">
+      <text class="row-label">医院</text>
+      <input class="row-input" value="{{editForm.hospital}}" data-field="hospital" bindinput="onEditFieldChange"/>
+    </view>
+    <view class="form-row">
+      <text class="row-label">医生</text>
+      <input class="row-input" value="{{editForm.doctor}}" data-field="doctor" bindinput="onEditFieldChange"/>
+    </view>
+    <view class="form-row">
+      <text class="row-label">备注</text>
+      <input class="row-input" value="{{editForm.notes}}" data-field="notes" bindinput="onEditFieldChange"/>
+    </view>
+  </view>
+
+  <view class="section-title">指标值</view>
+  <view wx:for="{{record.values}}" wx:key="indicatorId" class="card edit-value-card">
+    <text class="edit-value-name">{{item.indicatorName}} ({{item.unit || '文本'}})</text>
+    <input
+      wx:if="{{item.valueType === 'number'}}"
+      class="edit-value-input"
+      type="digit"
+      value="{{editingValues[item.indicatorId].valueDecimal}}"
+      data-id="{{item.indicatorId}}"
+      data-val-type="number"
+      bindinput="onEditValueChange"
+    />
+    <textarea
+      wx:else
+      class="edit-value-textarea"
+      value="{{editingValues[item.indicatorId].valueText}}"
+      data-id="{{item.indicatorId}}"
+      data-val-type="text"
+      bindinput="onEditValueChange"
+    />
+  </view>
+
+  <view class="double-btn">
+    <button class="btn-outline" bindtap="onCancelEdit">取消</button>
+    <button class="btn-primary" bindtap="onSubmitEdit" loading="{{submitting}}" disabled="{{submitting}}">保存</button>
+  </view>
+</view>
+
+<!-- 加载 -->
+<view wx:if="{{loading}}" class="load-more">加载中...</view>

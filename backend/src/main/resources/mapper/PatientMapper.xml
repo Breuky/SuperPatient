@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.superpatient.mapper.PatientMapper">
+
+    <resultMap id="baseMap" type="com.superpatient.entity.Patient">
+        <id column="id" property="id"/>
+        <result column="user_id" property="userId"/>
+        <result column="name" property="name"/>
+        <result column="gender" property="gender"/>
+        <result column="birth_date" property="birthDate"/>
+        <result column="diagnosis_date" property="diagnosisDate"/>
+        <result column="phone" property="phone"/>
+        <result column="notes" property="notes"/>
+        <result column="created_at" property="createdAt"/>
+        <result column="updated_at" property="updatedAt"/>
+    </resultMap>
+
+    <select id="page" resultType="com.superpatient.dto.PatientListVO">
+        SELECT
+            p.id,
+            p.name,
+            p.gender,
+            CASE p.gender WHEN 0 THEN '女' WHEN 1 THEN '男' ELSE '未知' END AS genderText,
+            TIMESTAMPDIFF(YEAR, p.birth_date, CURDATE()) AS age,
+            DATE_FORMAT(p.diagnosis_date, '%Y-%m-%d') AS diagnosisDate,
+            (SELECT DATE_FORMAT(MAX(r.exam_date), '%m-%d') FROM exam_record r WHERE r.patient_id = p.id) AS lastExamDate,
+            (SELECT COUNT(*) FROM exam_record r WHERE r.patient_id = p.id) AS totalExams,
+            (SELECT COUNT(DISTINCT v.indicator_id)
+             FROM exam_value v
+             JOIN exam_record r ON v.record_id = r.id
+             WHERE r.patient_id = p.id AND v.is_abnormal != 0) AS abnormalCount
+        FROM patient p
+        WHERE p.user_id = #{userId}
+        <if test="keyword != null and keyword != ''">
+            AND p.name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        ORDER BY p.updated_at DESC
+    </select>
+
+    <select id="findById" resultMap="baseMap">
+        SELECT * FROM patient WHERE id = #{id}
+    </select>
+
+    <select id="findByUserId" resultMap="baseMap">
+        SELECT * FROM patient WHERE user_id = #{userId} LIMIT 1
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO patient (user_id, name, gender, birth_date, diagnosis_date, phone, notes)
+        VALUES (#{userId}, #{name}, #{gender}, #{birthDate}, #{diagnosisDate}, #{phone}, #{notes})
+    </insert>
+
+    <update id="update">
+        UPDATE patient
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="birthDate != null">birth_date = #{birthDate},</if>
+            <if test="diagnosisDate != null">diagnosis_date = #{diagnosisDate},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="notes != null">notes = #{notes},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM patient WHERE id = #{id}
+    </delete>
+
+    <select id="countByUserId" resultType="int">
+        SELECT COUNT(*) FROM patient WHERE user_id = #{userId}
+    </select>
+
+</mapper>

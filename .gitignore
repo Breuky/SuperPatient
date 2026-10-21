@@ -1,0 +1,23 @@
+# ---- 构建产物 / 依赖 ----
+backend/target/
+frontend/Web/node_modules/
+frontend/Web/dist/
+**/.idea/
+**/*.iml
+
+# ---- 本地凭据（绝不入库）----
+backend/application-local.yml
+backend/config/application-local.yml
+**/application-local.yml
+.env
+.env.*
+
+# ---- 本地工具配置 ----
+.claude/settings.local.json
+frontend/miniprogram/project.private.config.json
+
+# ---- 运行时产物 ----
+uploads/
+logs/
+*.log
+.DS_Store
