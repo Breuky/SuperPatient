@@ -1,10 +1,11 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.superpatient.mapper.UserMapper">
 
     <resultMap id="baseMap" type="com.superpatient.entity.User">
         <id column="id" property="id"/>
-        <result column="openid" property="openid"/>
+        <result column="username" property="username"/>
+        <result column="password_hash" property="passwordHash"/>
         <result column="nickname" property="nickname"/>
         <result column="avatar_url" property="avatarUrl"/>
         <result column="phone" property="phone"/>
@@ -12,8 +13,8 @@
         <result column="updated_at" property="updatedAt"/>
     </resultMap>
 
-    <select id="findByOpenid" resultMap="baseMap">
-        SELECT * FROM user WHERE openid = #{openid}
+    <select id="findByUsername" resultMap="baseMap">
+        SELECT * FROM user WHERE username = #{username}
     </select>
 
     <select id="findById" resultMap="baseMap">
@@ -21,8 +22,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user (openid, nickname, avatar_url, phone)
-        VALUES (#{openid}, #{nickname}, #{avatarUrl}, #{phone})
+        INSERT INTO user (username, password_hash, nickname, avatar_url, phone)
+        VALUES (#{username}, #{passwordHash}, #{nickname}, #{avatarUrl}, #{phone})
     </insert>
 
     <update id="update">
@@ -31,6 +32,7 @@
             <if test="nickname != null">nickname = #{nickname},</if>
             <if test="avatarUrl != null">avatar_url = #{avatarUrl},</if>
             <if test="phone != null">phone = #{phone},</if>
+            <if test="passwordHash != null">password_hash = #{passwordHash},</if>
         </set>
         WHERE id = #{id}
     </update>

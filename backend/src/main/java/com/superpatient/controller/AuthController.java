@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "认证模块", description = "微信登录、用户信息管理")
+@Tag(name = "认证模块", description = "账号密码登录、注册与用户信息")
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -18,10 +18,17 @@ public class AuthController {
     private final AuthService authService;
     private final PatientService patientService;
 
-    @Operation(summary = "微信登录", description = "小程序调用 wx.login() 获取 code 后，发送到后端换取 JWT Token")
+    @Operation(summary = "登录", description = "用户名 + 密码换取 JWT Token")
     @PostMapping("/login")
     public Result login(@RequestBody LoginRequest request) {
         LoginVO vo = authService.login(request);
+        return Result.success(vo);
+    }
+
+    @Operation(summary = "注册", description = "创建账号并自动生成患者档案，注册成功即返回 Token")
+    @PostMapping("/register")
+    public Result register(@RequestBody RegisterRequest request) {
+        LoginVO vo = authService.register(request);
         return Result.success(vo);
     }
 

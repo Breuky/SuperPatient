@@ -7,9 +7,11 @@
 
 SET NAMES utf8mb4;
 
-INSERT INTO `user` (openid, nickname) VALUES ('demo_superpatient', '演示数据')
+-- 演示账号: demo_trend / demo1234
+INSERT INTO `user` (username, password_hash, nickname)
+VALUES ('demo_trend', '$2a$10$4Y8UtJSTpAitmeigyR5uqOxlb4Ss19zTBY8gQzVsGN2E1jxpoXjje', '演示数据')
 ON DUPLICATE KEY UPDATE nickname = '演示数据';
-SET @uid := (SELECT id FROM `user` WHERE openid = 'demo_superpatient');
+SET @uid := (SELECT id FROM `user` WHERE username = 'demo_trend');
 
 INSERT INTO patient (user_id, name, gender, birth_date, diagnosis_date, notes)
 SELECT @uid, '演示患者（合成数据）', 1, '2010-05-12', '2025-03-15',
@@ -85,4 +87,4 @@ SELECT '演示数据已写入' AS msg, @pid AS patient_id,
        (SELECT COUNT(*) FROM exam_value v JOIN exam_record r ON v.record_id = r.id WHERE r.patient_id = @pid) AS values_cnt;
 
 -- 删除演示数据（按需执行）:
--- DELETE FROM `user` WHERE openid = 'demo_superpatient';  -- 级联删除 patient / record / value
+-- DELETE FROM `user` WHERE username = 'demo_trend';  -- 级联删除 patient / record / value

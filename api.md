@@ -56,27 +56,25 @@
 
 ## 一、认证模块
 
-### 1.1 微信登录
+> Web 端采用「用户名 + 密码」登录，服务端签发 JWT。除登录、注册外，所有接口都需要在请求头带 `token`。
+
+### 1.1 登录
 
 `POST /api/auth/login`
-
-小程序调用 `wx.login()` 获取 `code` 后，发送到后端换取 JWT Token。
 
 **请求参数**
 
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
-| code | String | 是 | wx.login() 返回的临时登录凭证 |
-| nickname | String | 否 | 用户昵称（首次登录时传入） |
-| avatarUrl | String | 否 | 头像 URL（首次登录时传入） |
+| username | String | 是 | 用户名 |
+| password | String | 是 | 明文密码，服务端用 BCrypt 校验 |
 
 **请求示例**
 
 ```json
 {
-  "code": "0a3Xxx000xxx1A1xxx0006",
-  "nickname": "测试医生",
-  "avatarUrl": "https://thirdwx.qlogo.cn/..."
+  "username": "demo",
+  "password": "demo1234"
 }
 ```
 
@@ -91,14 +89,32 @@
     "expireIn": 43200,
     "userInfo": {
       "id": 1,
-      "nickname": "测试医生",
-      "avatarUrl": "https://thirdwx.qlogo.cn/..."
+      "nickname": "示例用户",
+      "avatarUrl": null,
+      "phone": null
     }
   }
 }
 ```
 
-### 1.2 获取用户信息
+**失败**：用户名不存在与密码错误统一返回 `用户名或密码错误`，不暴露账号是否存在。
+
+### 1.2 注册
+
+`POST /api/auth/register`
+
+注册成功即返回 Token，无需再调一次登录。系统会自动为账号创建一条 1:1 的患者档案。
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| username | String | 是 | 3-32 位，字母/数字/下划线/中文 |
+| password | String | 是 | 至少 6 位，服务端 BCrypt 存储 |
+| nickname | String | 否 | 不填则与用户名相同 |
+| gender | Integer | 是 | 0=女 1=男，用于匹配参考区间 |
+
+**响应**：与登录一致（`token` / `expireIn` / `userInfo`）。
+
+### 1.3 获取用户信息
 
 `GET /api/auth/profile`
 
@@ -123,7 +139,7 @@ token: eyJhbGciOiJIUzI1NiJ9...
 }
 ```
 
-### 1.3 更新用户信息
+### 1.4 更新用户信息
 
 `PUT /api/auth/profile`
 
@@ -165,7 +181,7 @@ token: eyJhbGciOiJIUzI1NiJ9...
 }
 ```
 
-### 1.4 登出
+### 1.5 登出
 
 `POST /api/auth/logout`
 
@@ -187,7 +203,7 @@ token: eyJhbGciOiJIUzI1NiJ9...
 }
 ```
 
-### 1.5 获取用户统计信息
+### 1.6 获取用户统计信息
 
 `GET /api/auth/statistics`
 
@@ -1168,7 +1184,8 @@ token: eyJhbGciOiJIUzI1NiJ9...
 
 | 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
-| POST | `/api/auth/login` | 微信登录 | 否 |
+| POST | `/api/auth/login` | 用户名密码登录 | 否 |
+| POST | `/api/auth/register` | 注册 | 否 |
 | GET | `/api/auth/profile` | 获取用户信息 | 是 |
 | PUT | `/api/auth/profile` | 更新用户信息 | 是 |
 | POST | `/api/auth/logout` | 登出 | 是 |

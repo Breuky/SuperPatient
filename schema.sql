@@ -19,16 +19,17 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- ============================================================
 DROP TABLE IF EXISTS `user`;
 CREATE TABLE `user` (
-    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-    `openid`      VARCHAR(64)  NOT NULL COMMENT '微信openid (唯一标识)',
-    `nickname`    VARCHAR(50)  DEFAULT NULL COMMENT '用户昵称',
-    `avatar_url`  VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
-    `phone`       VARCHAR(20)  DEFAULT NULL COMMENT '手机号 (微信授权获取)',
-    `created_at`  DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    `updated_at`  DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `username`      VARCHAR(50)  NOT NULL COMMENT '登录用户名 (唯一)',
+    `password_hash` VARCHAR(100) NOT NULL COMMENT 'BCrypt 密码哈希',
+    `nickname`      VARCHAR(50)  DEFAULT NULL COMMENT '用户昵称',
+    `avatar_url`    VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
+    `phone`         VARCHAR(20)  DEFAULT NULL COMMENT '手机号',
+    `created_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `updated_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
-    UNIQUE KEY `uk_openid` (`openid`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='小程序用户表';
+    UNIQUE KEY `uk_username` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户表';
 
 -- ============================================================
 -- 2. 患者信息表
@@ -275,8 +276,9 @@ SELECT id, NULL, 0, 14, 5, 12, '5-12', '儿童参考区间', 10 FROM `exam_indic
 -- ============== 示例数据 (合成, 开发测试用) =================
 -- ============================================================
 
-INSERT INTO `user` (`id`, `openid`, `nickname`, `avatar_url`) VALUES
-(1, 'test_openid_001', '示例用户', NULL);
+-- 示例账号: demo / demo1234
+INSERT INTO `user` (`id`, `username`, `password_hash`, `nickname`, `avatar_url`) VALUES
+(1, 'demo', '$2a$10$4Y8UtJSTpAitmeigyR5uqOxlb4Ss19zTBY8gQzVsGN2E1jxpoXjje', '示例用户', NULL);
 
 INSERT INTO `patient` (`id`, `user_id`, `name`, `gender`, `birth_date`, `diagnosis_date`, `phone`, `notes`) VALUES
 (1, 1, '示例患者', 1, '1985-06-12', NULL, NULL, '合成示例数据，用于本地开发调试');

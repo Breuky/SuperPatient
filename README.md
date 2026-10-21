@@ -31,7 +31,7 @@ POST /api/records               结构化入库，参考区间随值快照保存
 
 - 后端：Spring Boot 4 / Java 21 / MyBatis / MySQL 8 / JWT
 - Web：Vue 3 + Element Plus + ECharts
-- 小程序：原生微信小程序
+- 登录：用户名 + 密码（BCrypt），JWT 鉴权
 - 抽取：可插拔多模态客户端（`mock` / 通义千问 VL）
 
 ## 快速开始
@@ -54,7 +54,7 @@ mysql -uroot -p --default-character-set=utf8mb4 super_patient < db/2026-10-21_ex
 mysql -uroot -p --default-character-set=utf8mb4 super_patient < db/demo_trend_data.sql
 ```
 
-Web 登录时 `code` 填 `demo_superpatient` 即可查看。删除：`DELETE FROM user WHERE openid='demo_superpatient';`
+导入后用 `demo_trend / demo1234` 登录即可查看。删除：`DELETE FROM user WHERE username='demo_trend';`
 
 ### 2. 本地配置
 
@@ -70,8 +70,7 @@ spring:
     username: root
     password: 你的数据库密码
 app:
-  wechat:
-    mock-enabled: true   # 本地无小程序 appid 时开启，上线前必须关闭
+# 登录为用户名 + 密码，无需额外配置；示例账号 demo / demo1234
 ```
 
 ### 3. 启动
@@ -81,7 +80,7 @@ cd backend && mvn spring-boot:run          # http://localhost:8080
 cd frontend/Web && npm install && npm run dev   # http://localhost:3000
 ```
 
-小程序用微信开发者工具打开 `frontend/miniprogram`，修改 `utils/api.js` 里的 `BASE_URL`。
+打开 `http://localhost:3000`，用 `demo / demo1234` 登录，或点「注册」创建新账号。
 
 ### 4. 切换真实模型
 
@@ -112,7 +111,8 @@ cd backend && mvn test
 
 ## 已知限制
 
-- 小程序端尚未接入抽取，仍需手工录入
+- 仅维护 Web 端；`frontend/miniprogram` 保留历史代码，未适配账号密码登录
+- Token 无刷新与吊销机制，12 小时到期后需重新登录
 - 参考区间规则只覆盖差异明确的几项（血红蛋白、尿酸、肌酐、血沉、碱性磷酸酶、白细胞），其余走指标默认值
 - 趋势图的参考带按每次报告区间分段；只有一个数据点的指标看不出阶梯变化
 - 无审计日志与数据导出权限控制

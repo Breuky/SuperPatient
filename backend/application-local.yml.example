@@ -5,13 +5,7 @@ spring:
     username: root
     password: 你的数据库密码
 
-app:
-  # 本地无小程序 appid 时开启；上线前必须删除这一行（默认走真实 jscode2session）
-  wechat:
-    mock-enabled: true
-    # appid: wx...
-    # secret: ...
-
 # 可选：覆盖 JWT 密钥（>=32 位随机字符串）
-#  jwt:
-#    secret: 请替换为随机密钥
+# app:
+#   jwt:
+#     secret: 请替换为随机密钥

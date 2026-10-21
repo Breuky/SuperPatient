@@ -9,6 +9,12 @@ const routes = [
     meta: { guest: true, title: '登录' }
   },
   {
+    path: '/register',
+    name: 'Register',
+    component: () => import('@/views/RegisterView.vue'),
+    meta: { guest: true, title: '注册' }
+  },
+  {
     path: '/',
     redirect: '/records'
   },
@@ -76,7 +82,7 @@ router.beforeEach((to, from, next) => {
     if (auth.isLoggedIn) return next('/records')
     return next()
   }
-  if (!auth.isLoggedIn && to.path !== '/login') {
+  if (!auth.isLoggedIn) {
     return next('/login')
   }
   next()
