@@ -985,6 +985,52 @@ token: eyJhbGciOiJIUzI1NiJ9...
 
 > 物理删除，慎用。仅无历史数据时可操作，否则返回错误提示先用禁用。
 
+### 6.5 参考区间规则
+
+同一指标在不同性别/年龄段区间不同，规则表用来表达这种差异。
+
+**优先级**：报告照片上的印刷区间（`exam_value.ref_min/ref_max`） > 规则表命中 > `exam_indicator.normal_min/max`。落库时用 `ref_source` 标记来源（`report` / `rule`）。
+
+#### 查询某指标的规则
+
+`GET /api/indicators/{indicatorId}/reference-ranges`
+
+```json
+{
+  "code": 1,
+  "data": [
+    { "id": 1, "indicatorId": 1, "gender": 1, "ageMin": 18, "ageMax": null,
+      "refMin": 130, "refMax": 175, "refText": "130-175", "source": "成人男性参考区间", "priority": 10 },
+    { "id": 2, "indicatorId": 1, "gender": 0, "ageMin": 18, "ageMax": null,
+      "refMin": 115, "refMax": 150, "refText": "115-150", "source": "成人女性参考区间", "priority": 10 },
+    { "id": 3, "indicatorId": 1, "gender": null, "ageMin": 0, "ageMax": 17,
+      "refMin": 110, "refMax": 160, "refText": "110-160", "source": "儿童参考区间", "priority": 10 }
+  ]
+}
+```
+
+#### 新增 / 更新 / 删除
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/api/reference-ranges` | 新增规则 |
+| PUT | `/api/reference-ranges/{id}` | 全量更新（gender/age 传 null 表示不限） |
+| DELETE | `/api/reference-ranges/{id}` | 删除规则 |
+
+**请求体**
+
+| 字段 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| indicatorId | Integer | 是 | 指标ID（仅新增时必填） |
+| gender | Integer | 否 | null=不限，0=女，1=男 |
+| ageMin / ageMax | Integer | 否 | 年龄区间，含端点，null 表示不限 |
+| refMin / refMax | BigDecimal | 否 | 参考上下限，至少填一个 |
+| refText | String | 否 | 区间原文 |
+| source | String | 否 | 来源说明 |
+| priority | Integer | 否 | 优先级，越大越优先（默认 0） |
+
+**匹配规则**：性别与年龄需同时命中；在命中的规则里先比 `priority`，再比具体程度（同时限定性别+年龄 &gt; 只限定性别 &gt; 只限定年龄），最后取年龄区间更窄的一条。患者没有出生日期时，限定年龄的规则会被跳过。
+
 ---
 
 ## 七、文件上传
@@ -1148,6 +1194,10 @@ token: eyJhbGciOiJIUzI1NiJ9...
 | PUT | `/api/indicators/{id}` | 更新指标 | 是 |
 | PUT | `/api/indicators/{id}/status` | 禁用/启用指标 | 是 |
 | DELETE | `/api/indicators/{id}` | 删除指标 | 是 |
+| GET | `/api/indicators/{indicatorId}/reference-ranges` | 指标的参考区间规则 | 是 |
+| POST | `/api/reference-ranges` | 新增参考区间规则 | 是 |
+| PUT | `/api/reference-ranges/{id}` | 更新参考区间规则 | 是 |
+| DELETE | `/api/reference-ranges/{id}` | 删除参考区间规则 | 是 |
 | POST | `/api/files/upload` | 上传文件 | 是 |
 | GET | `/api/files/{id}` | 读取报告照片（仅上传者） | 是 |
 | POST | `/api/parse/report` | 解析化验单图片（AI 抽取） | 是 |

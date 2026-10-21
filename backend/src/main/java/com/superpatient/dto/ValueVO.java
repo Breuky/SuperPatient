@@ -18,6 +18,8 @@ public class ValueVO {
     private BigDecimal normalMin;
     private BigDecimal normalMax;
     private String refText;
+    /** report=报告印刷 rule=规则推算 default=指标默认 */
+    private String refSource;
     /** 本次报告的快照区间（可能为空，为空表示用指标默认值） */
     private BigDecimal refMin;
     private BigDecimal refMax;

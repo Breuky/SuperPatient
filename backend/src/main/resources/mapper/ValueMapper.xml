@@ -11,6 +11,7 @@
         <result column="ref_min" property="refMin"/>
         <result column="ref_max" property="refMax"/>
         <result column="ref_text" property="refText"/>
+        <result column="ref_source" property="refSource"/>
         <result column="raw_name" property="rawName"/>
         <result column="raw_unit" property="rawUnit"/>
         <result column="is_abnormal" property="isAbnormal"/>
@@ -23,11 +24,12 @@
 
     <insert id="batchInsert">
         INSERT INTO exam_value (record_id, indicator_id, value_decimal, value_text,
-                                ref_min, ref_max, ref_text, raw_name, raw_unit, is_abnormal)
+                                ref_min, ref_max, ref_text, ref_source, raw_name, raw_unit, is_abnormal)
         VALUES
         <foreach collection="list" item="item" separator=",">
             (#{item.recordId}, #{item.indicatorId}, #{item.valueDecimal}, #{item.valueText},
-             #{item.refMin}, #{item.refMax}, #{item.refText}, #{item.rawName}, #{item.rawUnit}, #{item.isAbnormal})
+             #{item.refMin}, #{item.refMax}, #{item.refText}, #{item.refSource},
+             #{item.rawName}, #{item.rawUnit}, #{item.isAbnormal})
         </foreach>
     </insert>
 

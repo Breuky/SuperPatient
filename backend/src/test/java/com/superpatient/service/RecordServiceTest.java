@@ -34,6 +34,7 @@ class RecordServiceTest {
     @Mock private PatientMapper patientMapper;
     @Mock private IndicatorMapper indicatorMapper;
     @Mock private CategoryMapper categoryMapper;
+    @Mock private ReferenceRangeService referenceRangeService;
 
     @InjectMocks private RecordService recordService;
 

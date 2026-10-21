@@ -11,6 +11,9 @@ CREATE DATABASE IF NOT EXISTS `super_patient`
 
 USE `super_patient`;
 
+-- 允许在已有数据的库上重复执行（会重建全部表）
+SET FOREIGN_KEY_CHECKS = 0;
+
 -- ============================================================
 -- 1. 用户表 (微信小程序用户)
 -- ============================================================
@@ -123,6 +126,7 @@ CREATE TABLE `exam_value` (
     `ref_min`        DECIMAL(12,4) DEFAULT NULL COMMENT '本次报告印刷的参考下限 (优先于指标默认值)',
     `ref_max`        DECIMAL(12,4) DEFAULT NULL COMMENT '本次报告印刷的参考上限',
     `ref_text`       VARCHAR(100)  DEFAULT NULL COMMENT '参考区间原文 (如 4.0-10.0 / 阴性)',
+    `ref_source`     VARCHAR(10)   DEFAULT NULL COMMENT '参考区间来源: report=报告印刷 rule=规则推算',
     `raw_name`       VARCHAR(100)  DEFAULT NULL COMMENT '报告上的原始指标名 (抽取溯源)',
     `raw_unit`       VARCHAR(30)   DEFAULT NULL COMMENT '报告上的原始单位 (抽取溯源)',
     `is_abnormal`    TINYINT       DEFAULT 0 COMMENT '是否异常: 0=正常 1=偏高 2=偏低 (后端自动计算)',
@@ -136,7 +140,30 @@ CREATE TABLE `exam_value` (
 
 
 -- ============================================================
--- 7. 上传文件归属表
+-- 7. 参考区间规则表
+--    同一指标在不同性别/年龄段区间不同。
+--    优先级: 报告印刷区间 > 本表命中规则 > 指标默认值
+-- ============================================================
+DROP TABLE IF EXISTS `reference_range`;
+CREATE TABLE `reference_range` (
+    `id`           INT           NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `indicator_id` INT           NOT NULL COMMENT '指标ID',
+    `gender`       TINYINT       DEFAULT NULL COMMENT '性别: NULL=不限 0=女 1=男',
+    `age_min`      INT           DEFAULT NULL COMMENT '年龄下限(含), NULL=不限',
+    `age_max`      INT           DEFAULT NULL COMMENT '年龄上限(含), NULL=不限',
+    `ref_min`      DECIMAL(12,4) DEFAULT NULL COMMENT '参考下限',
+    `ref_max`      DECIMAL(12,4) DEFAULT NULL COMMENT '参考上限',
+    `ref_text`     VARCHAR(100)  DEFAULT NULL COMMENT '区间原文',
+    `source`       VARCHAR(50)   DEFAULT NULL COMMENT '来源说明',
+    `priority`     INT           DEFAULT 0 COMMENT '优先级, 越大越优先',
+    `created_at`   DATETIME      DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    KEY `idx_rr_indicator` (`indicator_id`),
+    CONSTRAINT `fk_rr_indicator` FOREIGN KEY (`indicator_id`) REFERENCES `exam_indicator` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='参考区间规则表';
+
+-- ============================================================
+-- 8. 上传文件归属表
 --    报告图片按上传者鉴权访问, 不走公开静态目录
 -- ============================================================
 DROP TABLE IF EXISTS `upload_file`;
@@ -218,6 +245,33 @@ INSERT INTO `exam_indicator` (`category_id`, `name`, `aliases`, `unit`, `value_t
 (5, '检查结论', '结论,超声提示', NULL, 'text', NULL, NULL, 3, 1);
 
 -- ============================================================
+-- ============== 种子数据: 参考区间规则 ======================
+-- 只覆盖差异明确的几项, 其余走指标默认值
+-- ============================================================
+INSERT INTO `reference_range` (`indicator_id`, `gender`, `age_min`, `age_max`, `ref_min`, `ref_max`, `ref_text`, `source`, `priority`)
+SELECT id, 1, 18, NULL, 130, 175, '130-175', '成人男性参考区间', 10 FROM `exam_indicator` WHERE `name` = '血红蛋白';
+INSERT INTO `reference_range` (`indicator_id`, `gender`, `age_min`, `age_max`, `ref_min`, `ref_max`, `ref_text`, `source`, `priority`)
+SELECT id, 0, 18, NULL, 115, 150, '115-150', '成人女性参考区间', 10 FROM `exam_indicator` WHERE `name` = '血红蛋白';
+INSERT INTO `reference_range` (`indicator_id`, `gender`, `age_min`, `age_max`, `ref_min`, `ref_max`, `ref_text`, `source`, `priority`)
+SELECT id, NULL, 0, 17, 110, 160, '110-160', '儿童参考区间', 10 FROM `exam_indicator` WHERE `name` = '血红蛋白';
+INSERT INTO `reference_range` (`indicator_id`, `gender`, `age_min`, `age_max`, `ref_min`, `ref_max`, `ref_text`, `source`, `priority`)
+SELECT id, 1, 18, NULL, 208, 428, '208-428', '成人男性参考区间', 10 FROM `exam_indicator` WHERE `name` = '尿酸';
+INSERT INTO `reference_range` (`indicator_id`, `gender`, `age_min`, `age_max`, `ref_min`, `ref_max`, `ref_text`, `source`, `priority`)
+SELECT id, 0, 18, NULL, 155, 357, '155-357', '成人女性参考区间', 10 FROM `exam_indicator` WHERE `name` = '尿酸';
+INSERT INTO `reference_range` (`indicator_id`, `gender`, `age_min`, `age_max`, `ref_min`, `ref_max`, `ref_text`, `source`, `priority`)
+SELECT id, 1, 18, NULL, 57, 97, '57-97', '成人男性参考区间', 10 FROM `exam_indicator` WHERE `name` = '肌酐';
+INSERT INTO `reference_range` (`indicator_id`, `gender`, `age_min`, `age_max`, `ref_min`, `ref_max`, `ref_text`, `source`, `priority`)
+SELECT id, 0, 18, NULL, 41, 73, '41-73', '成人女性参考区间', 10 FROM `exam_indicator` WHERE `name` = '肌酐';
+INSERT INTO `reference_range` (`indicator_id`, `gender`, `age_min`, `age_max`, `ref_min`, `ref_max`, `ref_text`, `source`, `priority`)
+SELECT id, 1, NULL, NULL, 0, 15, '0-15', '男性参考区间', 5 FROM `exam_indicator` WHERE `name` = '血沉';
+INSERT INTO `reference_range` (`indicator_id`, `gender`, `age_min`, `age_max`, `ref_min`, `ref_max`, `ref_text`, `source`, `priority`)
+SELECT id, 0, NULL, NULL, 0, 20, '0-20', '女性参考区间', 5 FROM `exam_indicator` WHERE `name` = '血沉';
+INSERT INTO `reference_range` (`indicator_id`, `gender`, `age_min`, `age_max`, `ref_min`, `ref_max`, `ref_text`, `source`, `priority`)
+SELECT id, NULL, 1, 14, 100, 350, '100-350', '儿童生长期参考区间', 10 FROM `exam_indicator` WHERE `name` = '碱性磷酸酶';
+INSERT INTO `reference_range` (`indicator_id`, `gender`, `age_min`, `age_max`, `ref_min`, `ref_max`, `ref_text`, `source`, `priority`)
+SELECT id, NULL, 0, 14, 5, 12, '5-12', '儿童参考区间', 10 FROM `exam_indicator` WHERE `name` = '白细胞计数';
+
+-- ============================================================
 -- ============== 示例数据 (合成, 开发测试用) =================
 -- ============================================================
 
@@ -273,6 +327,8 @@ WHERE i.category_id = 3;
 -- ============================================================
 -- ============== 实用查询示例 (开发参考) ===================
 -- ============================================================
+
+SET FOREIGN_KEY_CHECKS = 1;
 
 -- 查询1: 获取某患者某指标的历史趋势 (核心查询)
 -- SELECT

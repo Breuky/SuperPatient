@@ -4,7 +4,9 @@ import com.superpatient.dto.TrendVO;
 import com.superpatient.dto.TrendableIndicatorVO;
 import com.superpatient.entity.ExamIndicator;
 import com.superpatient.entity.ExamValue;
+import com.superpatient.entity.Patient;
 import com.superpatient.mapper.IndicatorMapper;
+import com.superpatient.mapper.PatientMapper;
 import com.superpatient.mapper.ValueMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,8 @@ public class TrendService {
 
     private final ValueMapper valueMapper;
     private final IndicatorMapper indicatorMapper;
+    private final PatientMapper patientMapper;
+    private final ReferenceRangeService referenceRangeService;
 
     public TrendVO getTrends(Long patientId, Integer indicatorId, String startDate, String endDate) {
         ExamIndicator ind = indicatorMapper.findById(indicatorId);
@@ -30,13 +34,18 @@ public class TrendService {
         List<ExamValue> values = valueMapper.findByPatientIdAndIndicatorId(
                 patientId, indicatorId, startDate, endDate);
 
+        Patient patient = patientMapper.findById(patientId);
+        ReferenceRangeService.PatientContext ctx = ReferenceRangeService.PatientContext.of(patient);
+        ReferenceRangeService.Resolved rule = referenceRangeService.resolve(ind.getId(), ctx);
+
         TrendVO vo = new TrendVO();
         TrendVO.TrendIndicator ti = new TrendVO.TrendIndicator();
         ti.setId(ind.getId());
         ti.setName(ind.getName());
         ti.setUnit(ind.getUnit());
-        ti.setNormalMin(ind.getNormalMin());
-        ti.setNormalMax(ind.getNormalMax());
+        // 指标级默认带性别年龄规则，前端在点没有快照时用它兜底
+        ti.setNormalMin(rule != null ? rule.min() : ind.getNormalMin());
+        ti.setNormalMax(rule != null ? rule.max() : ind.getNormalMax());
         vo.setIndicator(ti);
 
         // We need record dates alongside values — we already have values with record_id
@@ -48,8 +57,9 @@ public class TrendService {
             p.setRecordId(v.getRecordId());
             p.setValue(v.getValueDecimal());
             p.setIsAbnormal(v.getIsAbnormal());
-            p.setRefMin(v.getRefMin());
-            p.setRefMax(v.getRefMax());
+            boolean hasSnapshot = v.getRefMin() != null || v.getRefMax() != null;
+            p.setRefMin(hasSnapshot ? v.getRefMin() : (rule != null ? rule.min() : null));
+            p.setRefMax(hasSnapshot ? v.getRefMax() : (rule != null ? rule.max() : null));
             p.setRefText(v.getRefText());
             p.setExamDate(v.getExamDate() != null
                     ? v.getExamDate().format(DateTimeFormatter.ISO_LOCAL_DATE)

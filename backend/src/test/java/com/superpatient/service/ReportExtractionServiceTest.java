@@ -37,14 +37,16 @@ class ReportExtractionServiceTest {
 
     @Mock private FileService fileService;
     @Mock private IndicatorMapper indicatorMapper;
+    @Mock private com.superpatient.mapper.PatientMapper patientMapper;
+    @Mock private ReferenceRangeService referenceRangeService;
     @Mock private LlmVisionClient llm;
 
     private ReportExtractionService service;
 
     @BeforeEach
     void setUp() {
-        service = new ReportExtractionService(fileService, indicatorMapper,
-                new IndicatorMatcher(), llm, new ObjectMapper());
+        service = new ReportExtractionService(fileService, indicatorMapper, patientMapper,
+                referenceRangeService, new IndicatorMatcher(), llm, new ObjectMapper());
     }
 
     @Test

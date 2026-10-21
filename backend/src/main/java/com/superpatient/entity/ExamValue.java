@@ -15,6 +15,8 @@ public class ExamValue {
     private BigDecimal refMin;
     private BigDecimal refMax;
     private String refText;
+    /** 区间来源: report=报告印刷 rule=规则推算, null=未存储(读取时回落) */
+    private String refSource;
     /** 模型抽取得到的原文，用于回溯与准确率评测 */
     private String rawName;
     private String rawUnit;

@@ -9,7 +9,10 @@ import com.superpatient.extract.ExtractionPrompt;
 import com.superpatient.extract.IndicatorMatcher;
 import com.superpatient.extract.UnitNormalizer;
 import com.superpatient.llm.LlmVisionClient;
+import com.superpatient.entity.Patient;
 import com.superpatient.mapper.IndicatorMapper;
+import com.superpatient.mapper.PatientMapper;
+import com.superpatient.util.CurrentHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -36,6 +39,8 @@ public class ReportExtractionService {
 
     private final FileService fileService;
     private final IndicatorMapper indicatorMapper;
+    private final PatientMapper patientMapper;
+    private final ReferenceRangeService referenceRangeService;
     private final IndicatorMatcher indicatorMatcher;
     private final LlmVisionClient llmVisionClient;
     private final ObjectMapper objectMapper;
@@ -58,15 +63,18 @@ public class ReportExtractionService {
         }
 
         List<ExamIndicator> pool = indicatorMapper.findByCategoryId(categoryId);
+        ReferenceRangeService.PatientContext ctx = ReferenceRangeService.PatientContext.of(
+                patientMapper.findByUserId(CurrentHolder.getCurrentId()));
         String prompt = ExtractionPrompt.build(pool);
         String raw = llmVisionClient.extract(bytes, mimeType, prompt);
         log.info("抽取原始输出({}): {}", llmVisionClient.displayName(),
                 raw.length() > 500 ? raw.substring(0, 500) + "..." : raw);
 
-        return assemble(raw, pool, categoryId);
+        return assemble(raw, pool, categoryId, ctx);
     }
 
-    private ExtractResultVO assemble(String raw, List<ExamIndicator> pool, Integer categoryId) {
+    private ExtractResultVO assemble(String raw, List<ExamIndicator> pool, Integer categoryId,
+                                     ReferenceRangeService.PatientContext ctx) {
         JsonNode root = readJson(raw);
 
         ExtractResultVO vo = new ExtractResultVO();
@@ -97,13 +105,14 @@ public class ReportExtractionService {
                 vo.getUnmatched().add(unmatched);
                 continue;
             }
-            vo.getCandidates().add(toCandidate(item, rawName, rawValue, rawUnit, match));
+            vo.getCandidates().add(toCandidate(item, rawName, rawValue, rawUnit, match, ctx));
         }
         return vo;
     }
 
     private ExtractResultVO.Candidate toCandidate(JsonNode item, String rawName, String rawValue,
-                                                  String rawUnit, IndicatorMatcher.Match match) {
+                                                  String rawUnit, IndicatorMatcher.Match match,
+                                                  ReferenceRangeService.PatientContext ctx) {
         ExamIndicator indicator = match.indicator();
         List<String> warnings = new ArrayList<>();
 
@@ -116,7 +125,7 @@ public class ReportExtractionService {
         c.setConfidence(match.confidence());
 
         BigDecimal value = parseNumber(rawValue);
-        BigDecimal[] range = resolveRange(item, indicator);
+        BigDecimal[] range = resolveRange(item, indicator, ctx);
 
         if (value == null) {
             c.setValueText(rawValue);
@@ -149,8 +158,9 @@ public class ReportExtractionService {
         return c;
     }
 
-    /** 优先用报告印刷的区间，没有再回落指标库默认值 */
-    private BigDecimal[] resolveRange(JsonNode item, ExamIndicator indicator) {
+    /** 优先用报告印刷的区间，其次按性别/年龄规则，最后回落指标库默认值 */
+    private BigDecimal[] resolveRange(JsonNode item, ExamIndicator indicator,
+                                      ReferenceRangeService.PatientContext ctx) {
         BigDecimal min = decimal(item.get("refMin"));
         BigDecimal max = decimal(item.get("refMax"));
         String refText = text(item, "refText");
@@ -163,6 +173,10 @@ public class ReportExtractionService {
             }
         }
         if (min == null && max == null) {
+            ReferenceRangeService.Resolved rule = referenceRangeService.resolve(indicator.getId(), ctx);
+            if (rule != null) {
+                return new BigDecimal[]{rule.min(), rule.max()};
+            }
             return new BigDecimal[]{indicator.getNormalMin(), indicator.getNormalMax()};
         }
         return new BigDecimal[]{min, max};

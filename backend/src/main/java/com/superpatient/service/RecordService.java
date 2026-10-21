@@ -31,6 +31,7 @@ public class RecordService {
     private final PatientMapper patientMapper;
     private final IndicatorMapper indicatorMapper;
     private final CategoryMapper categoryMapper;
+    private final ReferenceRangeService referenceRangeService;
 
     public List<RecordListVO> list(Long patientId, Integer categoryId, String startDate, String endDate) {
         return recordMapper.page(patientId, categoryId, startDate, endDate);
@@ -51,7 +52,13 @@ public class RecordService {
         vo.setNotes(record.getNotes());
         vo.setImageUrl(record.getImageUrl());
 
+        Patient patient = patientMapper.findById(record.getPatientId());
+        ReferenceRangeService.PatientContext ctx = ReferenceRangeService.PatientContext.of(patient);
+
         List<ExamValue> rawValues = valueMapper.findByRecordId(record.getId());
+        List<Integer> indicatorIds = rawValues.stream().map(ExamValue::getIndicatorId).distinct().toList();
+        var resolvedRanges = referenceRangeService.resolveBatch(indicatorIds, ctx);
+
         List<ValueVO> valueVOs = new ArrayList<>();
         for (ExamValue v : rawValues) {
             ExamIndicator ind = indicatorMapper.findById(v.getIndicatorId());
@@ -67,11 +74,22 @@ public class RecordService {
                 vvo.setUnit(ind.getUnit());
                 vvo.setValueType(ind.getValueType());
             }
-            // 参考区间以本次报告为准，指标库的值只是默认值
-            vvo.setNormalMin(v.getRefMin() != null ? v.getRefMin()
-                    : (ind != null ? ind.getNormalMin() : null));
-            vvo.setNormalMax(v.getRefMax() != null ? v.getRefMax()
-                    : (ind != null ? ind.getNormalMax() : null));
+            // 参考区间：报告快照 → 性别年龄规则 → 指标默认值
+            boolean hasSnapshot = v.getRefMin() != null || v.getRefMax() != null;
+            ReferenceRangeService.Resolved rule = resolvedRanges.get(v.getIndicatorId());
+            if (hasSnapshot) {
+                vvo.setNormalMin(v.getRefMin());
+                vvo.setNormalMax(v.getRefMax());
+                vvo.setRefSource(v.getRefSource() != null ? v.getRefSource() : "report");
+            } else if (rule != null) {
+                vvo.setNormalMin(rule.min());
+                vvo.setNormalMax(rule.max());
+                vvo.setRefSource("rule");
+            } else if (ind != null) {
+                vvo.setNormalMin(ind.getNormalMin());
+                vvo.setNormalMax(ind.getNormalMax());
+                vvo.setRefSource("default");
+            }
             vvo.setRefText(v.getRefText());
             vvo.setRefMin(v.getRefMin());
             vvo.setRefMax(v.getRefMax());
@@ -85,8 +103,6 @@ public class RecordService {
             var category = categoryMapper.findById(record.getCategoryId());
             if (category != null) vo.setCategoryName(category.getName());
         }
-        // Patient name
-        var patient = patientMapper.findById(record.getPatientId());
         if (patient != null) vo.setPatientName(patient.getName());
 
         vo.setValues(valueVOs);
@@ -105,7 +121,9 @@ public class RecordService {
         record.setImageUrl(request.getImageUrl());
         recordMapper.insert(record);
 
-        List<ExamValue> values = buildValues(record.getId(), request.getCategoryId(), request.getValues());
+        ReferenceRangeService.PatientContext ctx = ReferenceRangeService.PatientContext.of(
+                patientMapper.findById(record.getPatientId()));
+        List<ExamValue> values = buildValues(record.getId(), request.getCategoryId(), request.getValues(), ctx);
         if (!values.isEmpty()) {
             valueMapper.batchInsert(values);
         }
@@ -154,7 +172,9 @@ public class RecordService {
 
         if (request.getValues() != null) {
             valueMapper.deleteByRecordId(id);
-            List<ExamValue> values = buildValues(id, existing.getCategoryId(), request.getValues());
+            ReferenceRangeService.PatientContext ctx = ReferenceRangeService.PatientContext.of(
+                    patientMapper.findById(existing.getPatientId()));
+            List<ExamValue> values = buildValues(id, existing.getCategoryId(), request.getValues(), ctx);
             if (!values.isEmpty()) {
                 valueMapper.batchInsert(values);
             }
@@ -182,7 +202,8 @@ public class RecordService {
         }
     }
 
-    private List<ExamValue> buildValues(Long recordId, Integer categoryId, List<ValueItem> items) {
+    private List<ExamValue> buildValues(Long recordId, Integer categoryId, List<ValueItem> items,
+                                        ReferenceRangeService.PatientContext ctx) {
         List<ExamValue> values = new ArrayList<>();
         if (items == null) return values;
 
@@ -195,17 +216,38 @@ public class RecordService {
             v.setIndicatorId(item.getIndicatorId());
             v.setValueDecimal(item.getValueDecimal());
             v.setValueText(item.getValueText());
-            v.setRefMin(item.getRefMin());
-            v.setRefMax(item.getRefMax());
             v.setRefText(item.getRefText());
             v.setRawName(item.getRawName());
             v.setRawUnit(item.getRawUnit());
-            v.setIsAbnormal(calcAbnormal(item.getValueDecimal(),
-                    firstNonNull(item.getRefMin(), ind.getNormalMin()),
-                    firstNonNull(item.getRefMax(), ind.getNormalMax())));
+
+            ReferenceRangeService.Resolved range = effectiveRange(item, ind, ctx);
+            // 只有报告自带或规则推算出来的区间才落快照；
+            // 指标默认值不冻结，方便以后调整默认区间
+            if ("report".equals(range.source()) || "rule".equals(range.source())) {
+                v.setRefMin(range.min());
+                v.setRefMax(range.max());
+                v.setRefSource(range.source());
+            }
+            v.setIsAbnormal(calcAbnormal(item.getValueDecimal(), range.min(), range.max()));
             values.add(v);
         }
         return values;
+    }
+
+    /**
+     * 生效区间：请求里带的报告区间 &gt; 规则表 &gt; 指标默认值
+     */
+    private ReferenceRangeService.Resolved effectiveRange(ValueItem item, ExamIndicator ind,
+                                                          ReferenceRangeService.PatientContext ctx) {
+        if (item.getRefMin() != null || item.getRefMax() != null) {
+            return new ReferenceRangeService.Resolved(item.getRefMin(), item.getRefMax(),
+                    item.getRefText(), "report");
+        }
+        ReferenceRangeService.Resolved rule = referenceRangeService.resolve(ind.getId(), ctx);
+        if (rule != null) {
+            return rule;
+        }
+        return new ReferenceRangeService.Resolved(ind.getNormalMin(), ind.getNormalMax(), null, "default");
     }
 
     /**
@@ -218,10 +260,6 @@ public class RecordService {
         if (max != null && value.compareTo(max) > 0) return 1;
         if (min != null && value.compareTo(min) < 0) return 2;
         return 0;
-    }
-
-    private BigDecimal firstNonNull(BigDecimal a, BigDecimal b) {
-        return a != null ? a : b;
     }
 
     private String toAbnormalText(int isAbnormal) {

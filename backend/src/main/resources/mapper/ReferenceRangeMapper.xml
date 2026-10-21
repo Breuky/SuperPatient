@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.superpatient.mapper.ReferenceRangeMapper">
+
+    <resultMap id="baseMap" type="com.superpatient.entity.ReferenceRange">
+        <id column="id" property="id"/>
+        <result column="indicator_id" property="indicatorId"/>
+        <result column="gender" property="gender"/>
+        <result column="age_min" property="ageMin"/>
+        <result column="age_max" property="ageMax"/>
+        <result column="ref_min" property="refMin"/>
+        <result column="ref_max" property="refMax"/>
+        <result column="ref_text" property="refText"/>
+        <result column="source" property="source"/>
+        <result column="priority" property="priority"/>
+        <result column="created_at" property="createdAt"/>
+    </resultMap>
+
+    <select id="findByIndicatorId" resultMap="baseMap">
+        SELECT * FROM reference_range WHERE indicator_id = #{indicatorId} ORDER BY priority DESC, id ASC
+    </select>
+
+    <select id="findByIndicatorIds" resultMap="baseMap">
+        SELECT * FROM reference_range
+        WHERE indicator_id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">#{id}</foreach>
+        ORDER BY priority DESC, id ASC
+    </select>
+
+    <select id="findById" resultMap="baseMap">
+        SELECT * FROM reference_range WHERE id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO reference_range (indicator_id, gender, age_min, age_max, ref_min, ref_max, ref_text, source, priority)
+        VALUES (#{indicatorId}, #{gender}, #{ageMin}, #{ageMax}, #{refMin}, #{refMax}, #{refText}, #{source}, #{priority})
+    </insert>
+
+    <!-- 全量覆盖: gender/age 允许被置空表示"不限", 不能用 <if> 判断 -->
+    <update id="update">
+        UPDATE reference_range
+        SET gender = #{gender},
+            age_min = #{ageMin},
+            age_max = #{ageMax},
+            ref_min = #{refMin},
+            ref_max = #{refMax},
+            ref_text = #{refText},
+            source = #{source},
+            priority = #{priority}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="deleteById">
+        DELETE FROM reference_range WHERE id = #{id}
+    </delete>
+
+</mapper>
