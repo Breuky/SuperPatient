@@ -20,8 +20,18 @@
         title="补全性别和出生日期后，参考区间会按你的情况匹配，异常判定更准确"
       />
 
+      <el-alert
+        v-if="loadError"
+        type="error"
+        :closable="false"
+        show-icon
+        style="margin-top:12px"
+        :title="'个人信息加载失败：' + loadError"
+      />
+
       <div style="margin-top:12px">
-        <el-button type="success" @click="openEdit">编辑信息</el-button>
+        <el-button type="success" :disabled="!profile" @click="openEdit">编辑信息</el-button>
+        <el-button v-if="loadError" @click="reload">重新加载</el-button>
       </div>
     </el-card>
 
@@ -97,12 +107,16 @@ const profile = ref(null)
 const showEdit = ref(false)
 const loading = ref(true)
 const saving = ref(false)
+const loadError = ref('')
 
 const editForm = reactive({ nickname: '', gender: null, birthDate: '', phone: '', notes: '' })
 const stats = reactive({ recordCount: 0, indicatorCount: 0 })
 
 function openEdit() {
-  if (!profile.value) return
+  if (!profile.value) {
+    loadError.value = '个人信息还没加载出来，请点「重新加载」'
+    return
+  }
   const p = profile.value
   editForm.nickname = p.nickname || ''
   editForm.gender = p.gender ?? null
@@ -133,21 +147,33 @@ function handleLogout() {
 }
 
 async function fetchProfile() {
+  loadError.value = ''
   try {
     const res = await authApi.getProfile()
+    if (!res.data) {
+      loadError.value = '接口没有返回用户信息'
+      return
+    }
     profile.value = res.data
-  } catch (e) { console.error(e) }
+  } catch (e) {
+    loadError.value = e.message || '网络异常'
+  }
 }
 
-onMounted(async () => {
+async function reload() {
   loading.value = true
-  await fetchProfile()
   try {
+    await fetchProfile()
     const res = await authApi.getStatistics()
     Object.assign(stats, res.data)
-  } catch (e) { console.error(e) }
-  loading.value = false
-})
+  } catch (e) {
+    console.error(e)
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(reload)
 </script>
 
 <style scoped>
