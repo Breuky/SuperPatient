@@ -51,8 +51,8 @@
         <div v-if="record.imageUrl" style="margin-bottom:16px">
           <el-card header="报告照片">
             <el-image
-              :src="record.imageUrl"
-              :preview-src-list="[record.imageUrl]"
+              :src="fileUrl(record.imageUrl)"
+              :preview-src-list="[fileUrl(record.imageUrl)]"
               fit="cover"
               style="max-height:400px"
             />
@@ -69,6 +69,7 @@
 </template>
 
 <script setup>
+import { fileUrl } from '@/utils/file'
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'

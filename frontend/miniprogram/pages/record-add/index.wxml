@@ -102,8 +102,8 @@
   <view class="section">
     <view class="section-title">报告照片（选填）</view>
     <view class="card">
-      <view wx:if="{{imageUrl}}" class="image-preview" bindtap="onPreviewImage">
-        <image src="{{imageUrl}}" mode="aspectFill" class="preview-img"/>
+      <view wx:if="{{imagePreviewUrl}}" class="image-preview" bindtap="onPreviewImage">
+        <image src="{{imagePreviewUrl}}" mode="aspectFill" class="preview-img"/>
         <view class="image-remove" bindtap="onRemoveImage">✕</view>
       </view>
       <view wx:else class="upload-btn" bindtap="onChooseImage">

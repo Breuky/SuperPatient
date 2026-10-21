@@ -21,6 +21,15 @@ app:
   jwt:
     # 生产环境必须通过环境变量 JWT_SECRET 覆盖
     secret: ${JWT_SECRET:superpatient-dev-secret}
+  upload:
+    # 报告照片落盘目录（不在静态资源目录下，读取需经 /api/files/{id} 鉴权）
+    dir: ${UPLOAD_DIR:./uploads}
+  wechat:
+    # false=调用微信 jscode2session（需要 appid/secret）
+    # 本地开发在 application-local.yml 里设为 true 可免配置登录
+    mock-enabled: ${WECHAT_MOCK:false}
+    appid: ${WECHAT_APPID:}
+    secret: ${WECHAT_SECRET:}
 
 mybatis:
   configuration:

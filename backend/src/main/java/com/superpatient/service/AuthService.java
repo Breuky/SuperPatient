@@ -1,5 +1,6 @@
 package com.superpatient.service;
 
+import com.superpatient.auth.WechatAuthClient;
 import com.superpatient.dto.*;
 import com.superpatient.entity.Patient;
 import com.superpatient.entity.User;
@@ -25,13 +26,14 @@ public class AuthService {
     private final RecordMapper recordMapper;
     private final ValueMapper valueMapper;
     private final JwtUtils jwtUtils;
+    private final WechatAuthClient wechatAuthClient;
 
     /**
-     * 微信登录：根据 openid 查找用户，不存在则创建。
+     * 微信登录：用 wx.login() 的 code 换取 openid，再按 openid 查找或创建用户。
      * 每个用户自动创建一个对应的 patient 记录（1:1 关系）。
      */
     public LoginVO login(LoginRequest request) {
-        String openid = request.getCode();
+        String openid = wechatAuthClient.resolveOpenid(request.getCode());
         User user = userMapper.findByOpenid(openid);
         if (user == null) {
             user = new User();

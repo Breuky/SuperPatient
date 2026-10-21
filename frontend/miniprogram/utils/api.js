@@ -171,6 +171,18 @@ function downloadFile(url) {
   });
 }
 
+/**
+ * 把后端返回的图片地址转成可直接加载的完整 URL。
+ * 图片接口需要鉴权，而 <image> 无法自定义请求头，因此把 token 拼在 query 上。
+ */
+function fileUrl(url) {
+  if (!url) return '';
+  if (url.indexOf('http://') === 0 || url.indexOf('https://') === 0) return url;
+  if (url.indexOf('data:') === 0) return url;
+  if (url.indexOf('/api/files/') !== 0) return BASE_URL + url;
+  return BASE_URL + url + '?token=' + encodeURIComponent(auth.getToken() || '');
+}
+
 module.exports = {
   get,
   post,
@@ -178,5 +190,6 @@ module.exports = {
   del,
   uploadFile,
   downloadFile,
+  fileUrl,
   BASE_URL
 };

@@ -1007,12 +1007,33 @@ token: eyJhbGciOiJIUzI1NiJ9...
   "code": 1,
   "msg": "success",
   "data": {
-    "url": "https://oss.example.com/uploads/report_20260801_001.jpg",
+    "url": "/api/files/12",
     "fileName": "report_20260801_001.jpg",
     "fileSize": 1024000
   }
 }
 ```
+
+> 返回的 `url` 是受鉴权保护的读取地址，直接存进 `exam_record.image_url`。
+> 图片不再通过静态目录公开访问。
+
+### 7.2 读取报告照片
+
+`GET /api/files/{id}`
+
+**认证**: 是，且仅上传者本人可读。除 `token` 请求头外，也支持 `?token=xxx` 查询参数
+（浏览器 `<img>` / 小程序 `<image>` 无法自定义请求头）。
+
+| 参数 | 位置 | 必填 | 说明 |
+|------|------|------|------|
+| id | path | 是 | 上传接口返回的文件ID |
+| token | query | 否 | 仅当无法设置请求头时使用 |
+
+**响应**
+
+- 200：图片二进制流（Content-Type 为 image/png 或 image/jpeg）
+- 401：未携带或 token 无效
+- 404：文件不存在，**或不属于当前用户**（不泄露文件是否存在）
 
 ---
 
@@ -1066,6 +1087,7 @@ token: eyJhbGciOiJIUzI1NiJ9...
 | PUT | `/api/indicators/{id}/status` | 禁用/启用指标 | 是 |
 | DELETE | `/api/indicators/{id}` | 删除指标 | 是 |
 | POST | `/api/files/upload` | 上传文件 | 是 |
+| GET | `/api/files/{id}` | 读取报告照片（仅上传者） | 是 |
 | GET | `/api/patients/{patientId}/export` | 导出患者数据 | 是 |
 
 > 接口总数：**28 个**

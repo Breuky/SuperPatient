@@ -27,7 +27,9 @@ Page({
     this.setData({ loading: true });
     api.get(`/api/records/${this.data.recordId}`)
       .then(res => {
-        this.setData({ record: res.data, loading: false });
+        const record = res.data;
+        record.imageUrl = api.fileUrl(res.data.imageUrl);
+        this.setData({ record, loading: false });
       })
       .catch(() => {
         this.setData({ loading: false });

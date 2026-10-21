@@ -14,7 +14,8 @@ Page({
     hospital: '',
     doctor: '',
     notes: '',
-    imageUrl: '',
+    imageUrl: '',        // 存库用的相对路径
+    imagePreviewUrl: '', // 展示用（带 token）
     // 指标值：{ indicatorId: { valueDecimal, valueText } }
     valuesMap: {},
     // 加载
@@ -118,7 +119,7 @@ Page({
         // 上传到后端
         api.uploadFile(filePath, 'report')
           .then(data => {
-            this.setData({ imageUrl: data.url });
+            this.setData({ imageUrl: data.url, imagePreviewUrl: api.fileUrl(data.url) });
             wx.showToast({ title: '上传成功', icon: 'success' });
           })
           .catch(() => {});
@@ -130,7 +131,7 @@ Page({
    * 删除照片
    */
   onRemoveImage() {
-    this.setData({ imageUrl: '' });
+    this.setData({ imageUrl: '', imagePreviewUrl: '' });
   },
 
   /**
@@ -138,8 +139,8 @@ Page({
    */
   onPreviewImage() {
     wx.previewImage({
-      urls: [this.data.imageUrl],
-      current: this.data.imageUrl
+      urls: [this.data.imagePreviewUrl],
+      current: this.data.imagePreviewUrl
     });
   },
 

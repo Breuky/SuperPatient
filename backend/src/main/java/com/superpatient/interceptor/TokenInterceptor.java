@@ -22,8 +22,12 @@ public class TokenInterceptor implements HandlerInterceptor {
 
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
-        // 1. 从请求头获取 token
+        // 1. 从请求头获取 token；图片接口额外允许 ?token=，
+        //    因为浏览器 <img> 标签无法自定义请求头
         String token = request.getHeader("token");
+        if ((token == null || token.isEmpty()) && request.getRequestURI().startsWith("/api/files/")) {
+            token = request.getParameter("token");
+        }
 
         // 2. 无 token → 401
         if (token == null || token.isEmpty()) {

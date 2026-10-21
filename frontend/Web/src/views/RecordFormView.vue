@@ -95,6 +95,7 @@ import { recordApi } from '@/api/record'
 import { fileApi } from '@/api/file'
 import IndicatorInput from '@/components/IndicatorInput.vue'
 import { now } from '@/utils/date'
+import { fileUrl } from '@/utils/file'
 
 const route = useRoute()
 const router = useRouter()
@@ -163,7 +164,7 @@ onMounted(async () => {
       form.notes = r.notes || ''
       if (r.imageUrl) {
         uploadedUrl.value = r.imageUrl
-        fileList.value = [{ name: '报告照片', url: r.imageUrl }]
+        fileList.value = [{ name: '报告照片', url: fileUrl(r.imageUrl) }]
       }
       if (r.values) {
         for (const v of r.values) {

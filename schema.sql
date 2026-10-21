@@ -130,6 +130,26 @@ CREATE TABLE `exam_value` (
 
 
 -- ============================================================
+-- 7. 上传文件归属表
+--    报告图片按上传者鉴权访问, 不走公开静态目录
+-- ============================================================
+DROP TABLE IF EXISTS `upload_file`;
+CREATE TABLE IF NOT EXISTS `upload_file` (
+    `id`            BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `user_id`       BIGINT       NOT NULL COMMENT '上传者ID (关联user.id)',
+    `file_name`     VARCHAR(128) NOT NULL COMMENT '磁盘文件名',
+    `original_name` VARCHAR(255) DEFAULT NULL COMMENT '原始文件名',
+    `content_type`  VARCHAR(100) DEFAULT NULL COMMENT 'MIME 类型',
+    `size_bytes`    BIGINT       DEFAULT NULL COMMENT '文件大小',
+    `biz_type`      VARCHAR(20)  DEFAULT 'report' COMMENT '用途: report=报告 avatar=头像',
+    `created_at`    DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_file_name` (`file_name`),
+    KEY `idx_upload_user` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='上传文件归属表';
+
+
+-- ============================================================
 -- =================== 种子数据: 检查分类 ====================
 -- ============================================================
 INSERT INTO `exam_category` (`id`, `name`, `icon`, `sort_order`) VALUES
