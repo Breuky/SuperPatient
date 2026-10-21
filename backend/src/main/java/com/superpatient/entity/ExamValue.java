@@ -11,6 +11,13 @@ public class ExamValue {
     private Integer indicatorId;
     private BigDecimal valueDecimal;
     private String valueText;
+    /** 本次报告印刷的参考区间（快照，优先于指标默认值） */
+    private BigDecimal refMin;
+    private BigDecimal refMax;
+    private String refText;
+    /** 模型抽取得到的原文，用于回溯与准确率评测 */
+    private String rawName;
+    private String rawUnit;
     private Integer isAbnormal;
     private LocalDateTime createdAt;
     // 非数据库字段，趋势查询时通过 JOIN 填充

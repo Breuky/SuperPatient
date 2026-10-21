@@ -24,5 +24,9 @@ public class TrendVO {
         private String examDate;
         private BigDecimal value;
         private Integer isAbnormal;
+        /** 该次报告自己的参考区间，不同医院可能不同 */
+        private BigDecimal refMin;
+        private BigDecimal refMax;
+        private String refText;
     }
 }

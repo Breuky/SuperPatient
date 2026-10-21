@@ -1035,6 +1035,68 @@ token: eyJhbGciOiJIUzI1NiJ9...
 - 401：未携带或 token 无效
 - 404：文件不存在，**或不属于当前用户**（不泄露文件是否存在）
 
+### 7.3 解析化验单图片（AI 抽取）
+
+`POST /api/parse/report`
+
+**认证**: 是。图片必须是**当前用户自己上传**的，否则返回业务错误。
+
+把图片交给多模态模型抽取指标，**只返回候选值，不落库**。前端把候选填进校对页，用户确认后再调 `POST /api/records`。
+
+**请求示例**
+
+```json
+{
+  "imageUrl": "/api/files/12",
+  "categoryId": 1
+}
+```
+
+**响应示例（节选）**
+
+```json
+{
+  "code": 1,
+  "data": {
+    "categoryId": 1,
+    "examDate": "2026-03-28",
+    "hospital": "市第一人民医院",
+    "engine": "qwen-vl-max-latest",
+    "candidates": [
+      {
+        "rawName": "WBC",
+        "indicatorId": 30,
+        "indicatorName": "白细胞计数",
+        "unit": "10^9/L",
+        "rawUnit": "10^9/L",
+        "valueDecimal": 3.2,
+        "refMin": 4.0,
+        "refMax": 10.0,
+        "refText": "4.0-10.0",
+        "isAbnormal": 2,
+        "matchType": "alias",
+        "confidence": 0.95,
+        "warning": null
+      }
+    ],
+    "unmatched": [
+      { "rawName": "嗜酸性粒细胞百分比", "rawValue": "2.1", "rawUnit": "%", "refText": "0.4-8.0" }
+    ]
+  }
+}
+```
+
+**字段说明**
+
+| 字段 | 说明 |
+|------|------|
+| matchType | exact=规范名精确命中，alias=别名命中，contains=包含匹配 |
+| confidence | 匹配置信度，供前端弱化显示低置信项 |
+| unmatched | 指标库里没有的项，需要用户手动指定或丢弃 |
+| warning | 单位换算、数值超出合理范围等提示 |
+
+**模型提供方**：`app.llm.provider` 控制，`mock`（默认，返回固定样本，无需 Key）或 `qwen`（通义千问 VL，需 `DASHSCOPE_API_KEY`）。
+
 ---
 
 ## 八、数据导出
@@ -1088,6 +1150,7 @@ token: eyJhbGciOiJIUzI1NiJ9...
 | DELETE | `/api/indicators/{id}` | 删除指标 | 是 |
 | POST | `/api/files/upload` | 上传文件 | 是 |
 | GET | `/api/files/{id}` | 读取报告照片（仅上传者） | 是 |
+| POST | `/api/parse/report` | 解析化验单图片（AI 抽取） | 是 |
 | GET | `/api/patients/{patientId}/export` | 导出患者数据 | 是 |
 
 > 接口总数：**28 个**

@@ -66,9 +66,14 @@ public class RecordService {
                 vvo.setIndicatorName(ind.getName());
                 vvo.setUnit(ind.getUnit());
                 vvo.setValueType(ind.getValueType());
-                vvo.setNormalMin(ind.getNormalMin());
-                vvo.setNormalMax(ind.getNormalMax());
             }
+            // 参考区间以本次报告为准，指标库的值只是默认值
+            vvo.setNormalMin(v.getRefMin() != null ? v.getRefMin()
+                    : (ind != null ? ind.getNormalMin() : null));
+            vvo.setNormalMax(v.getRefMax() != null ? v.getRefMax()
+                    : (ind != null ? ind.getNormalMax() : null));
+            vvo.setRefText(v.getRefText());
+            vvo.setRawName(v.getRawName());
             valueVOs.add(vvo);
         }
 
@@ -187,22 +192,33 @@ public class RecordService {
             v.setIndicatorId(item.getIndicatorId());
             v.setValueDecimal(item.getValueDecimal());
             v.setValueText(item.getValueText());
-            v.setIsAbnormal(calcAbnormal(ind, item.getValueDecimal()));
+            v.setRefMin(item.getRefMin());
+            v.setRefMax(item.getRefMax());
+            v.setRefText(item.getRefText());
+            v.setRawName(item.getRawName());
+            v.setRawUnit(item.getRawUnit());
+            v.setIsAbnormal(calcAbnormal(item.getValueDecimal(),
+                    firstNonNull(item.getRefMin(), ind.getNormalMin()),
+                    firstNonNull(item.getRefMax(), ind.getNormalMax())));
             values.add(v);
         }
         return values;
     }
 
     /**
-     * 根据指标的正常范围和实际值计算 isAbnormal：
+     * 根据参考区间和实际值计算 isAbnormal：
      * 0=正常 1=偏高 2=偏低
+     * 区间优先取本次报告印刷值，缺省时回落指标库默认值。
      */
-    private int calcAbnormal(ExamIndicator ind, BigDecimal value) {
+    private int calcAbnormal(BigDecimal value, BigDecimal min, BigDecimal max) {
         if (value == null) return 0;
-        if (ind.getNormalMin() == null && ind.getNormalMax() == null) return 0;
-        if (ind.getNormalMax() != null && value.compareTo(ind.getNormalMax()) > 0) return 1;
-        if (ind.getNormalMin() != null && value.compareTo(ind.getNormalMin()) < 0) return 2;
+        if (max != null && value.compareTo(max) > 0) return 1;
+        if (min != null && value.compareTo(min) < 0) return 2;
         return 0;
+    }
+
+    private BigDecimal firstNonNull(BigDecimal a, BigDecimal b) {
+        return a != null ? a : b;
     }
 
     private String toAbnormalText(int isAbnormal) {

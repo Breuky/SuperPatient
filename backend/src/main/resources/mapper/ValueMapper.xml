@@ -8,6 +8,11 @@
         <result column="indicator_id" property="indicatorId"/>
         <result column="value_decimal" property="valueDecimal"/>
         <result column="value_text" property="valueText"/>
+        <result column="ref_min" property="refMin"/>
+        <result column="ref_max" property="refMax"/>
+        <result column="ref_text" property="refText"/>
+        <result column="raw_name" property="rawName"/>
+        <result column="raw_unit" property="rawUnit"/>
         <result column="is_abnormal" property="isAbnormal"/>
         <result column="created_at" property="createdAt"/>
     </resultMap>
@@ -17,10 +22,12 @@
     </select>
 
     <insert id="batchInsert">
-        INSERT INTO exam_value (record_id, indicator_id, value_decimal, value_text, is_abnormal)
+        INSERT INTO exam_value (record_id, indicator_id, value_decimal, value_text,
+                                ref_min, ref_max, ref_text, raw_name, raw_unit, is_abnormal)
         VALUES
         <foreach collection="list" item="item" separator=",">
-            (#{item.recordId}, #{item.indicatorId}, #{item.valueDecimal}, #{item.valueText}, #{item.isAbnormal})
+            (#{item.recordId}, #{item.indicatorId}, #{item.valueDecimal}, #{item.valueText},
+             #{item.refMin}, #{item.refMax}, #{item.refText}, #{item.rawName}, #{item.rawUnit}, #{item.isAbnormal})
         </foreach>
     </insert>
 

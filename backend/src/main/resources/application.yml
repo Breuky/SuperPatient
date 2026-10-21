@@ -30,6 +30,12 @@ app:
     mock-enabled: ${WECHAT_MOCK:false}
     appid: ${WECHAT_APPID:}
     secret: ${WECHAT_SECRET:}
+  llm:
+    # mock=返回固定样本（无需 Key）；qwen=调用通义千问 VL
+    provider: ${LLM_PROVIDER:mock}
+    base-url: ${LLM_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
+    api-key: ${DASHSCOPE_API_KEY:}
+    model: ${LLM_MODEL:qwen-vl-max-latest}
 
 mybatis:
   configuration:

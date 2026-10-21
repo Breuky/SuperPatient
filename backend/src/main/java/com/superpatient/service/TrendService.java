@@ -48,6 +48,9 @@ public class TrendService {
             p.setRecordId(v.getRecordId());
             p.setValue(v.getValueDecimal());
             p.setIsAbnormal(v.getIsAbnormal());
+            p.setRefMin(v.getRefMin());
+            p.setRefMax(v.getRefMax());
+            p.setRefText(v.getRefText());
             p.setExamDate(v.getExamDate() != null
                     ? v.getExamDate().format(DateTimeFormatter.ISO_LOCAL_DATE)
                     : null);

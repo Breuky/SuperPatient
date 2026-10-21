@@ -62,6 +62,28 @@ class RecordServiceTest {
         assertEquals(List.of(0), capturedAbnormalFlags());
     }
 
+    @Test
+    void reportRangeOverridesIndicatorDefault() {
+        when(indicatorMapper.findById(1)).thenReturn(indicator(1, "4", "10"));
+        ValueItem item = item(1, "3.2");
+        item.setRefMin(new BigDecimal("3"));
+        item.setRefMax(new BigDecimal("5"));
+
+        recordService.create(request(item));
+
+        ExamValue saved = capturedValues().get(0);
+        assertEquals(0, saved.getIsAbnormal(), "按报告区间 3~5 判断，3.2 属正常");
+        assertEquals(0, new BigDecimal("3").compareTo(saved.getRefMin()));
+        assertEquals(0, new BigDecimal("5").compareTo(saved.getRefMax()));
+    }
+
+    private List<ExamValue> capturedValues() {
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<List<ExamValue>> captor = ArgumentCaptor.forClass(List.class);
+        verify(valueMapper).batchInsert(captor.capture());
+        return captor.getValue();
+    }
+
     private List<Integer> capturedAbnormalFlags() {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<ExamValue>> captor = ArgumentCaptor.forClass(List.class);

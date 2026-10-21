@@ -6,6 +6,7 @@
         <id column="id" property="id"/>
         <result column="category_id" property="categoryId"/>
         <result column="name" property="name"/>
+        <result column="aliases" property="aliases"/>
         <result column="unit" property="unit"/>
         <result column="value_type" property="valueType"/>
         <result column="normal_min" property="normalMin"/>
