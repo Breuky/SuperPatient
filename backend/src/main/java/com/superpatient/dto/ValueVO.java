@@ -18,6 +18,10 @@ public class ValueVO {
     private BigDecimal normalMin;
     private BigDecimal normalMax;
     private String refText;
+    /** 本次报告的快照区间（可能为空，为空表示用指标默认值） */
+    private BigDecimal refMin;
+    private BigDecimal refMax;
     /** 报告上的原始名称，用于展示"报告写的是 WBC" */
     private String rawName;
+    private String rawUnit;
 }

@@ -62,7 +62,23 @@
     </el-card>
 
     <!-- Upload -->
-    <el-card header="报告照片 (可选)" style="margin-top:16px">
+    <el-card style="margin-top:16px">
+      <template #header>
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <span>报告照片 (可选)</span>
+          <el-button
+            v-if="uploadedUrl"
+            type="primary"
+            plain
+            size="small"
+            :loading="parsing"
+            @click="handleParse"
+          >
+            <el-icon><MagicStick /></el-icon>
+            {{ parsing ? '识别中...' : 'AI 识别化验单' }}
+          </el-button>
+        </div>
+      </template>
       <el-upload
         :auto-upload="false"
         :limit="1"
@@ -84,6 +100,13 @@
       <el-button type="success" size="large" @click="handleSave">保存</el-button>
       <el-button size="large" @click="$router.back()">取消</el-button>
     </div>
+
+    <ExtractReviewDialog
+      v-model:visible="reviewVisible"
+      :result="extractResult"
+      :indicators="activeIndicators"
+      @apply="applyExtraction"
+    />
   </div>
 </template>
 
@@ -93,7 +116,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { categoryApi } from '@/api/category'
 import { recordApi } from '@/api/record'
 import { fileApi } from '@/api/file'
+import { parseApi } from '@/api/parse'
+import { ElMessage } from 'element-plus'
 import IndicatorInput from '@/components/IndicatorInput.vue'
+import ExtractReviewDialog from '@/components/ExtractReviewDialog.vue'
 import { now } from '@/utils/date'
 import { fileUrl } from '@/utils/file'
 
@@ -115,6 +141,9 @@ const form = reactive({
 const valueMap = reactive({})
 const uploadedUrl = ref('')
 const fileList = ref([])
+const parsing = ref(false)
+const reviewVisible = ref(false)
+const extractResult = ref(null)
 
 const activeIndicators = computed(() => {
   if (!form.categoryId) return []
@@ -127,6 +156,44 @@ async function onFileChange(file) {
     const res = await fileApi.upload(file.raw)
     uploadedUrl.value = res.data.url
   } catch (err) { alert('上传失败: ' + err.message) }
+}
+
+async function handleParse() {
+  if (!form.categoryId) return alert('请先选择检查类型')
+  if (!uploadedUrl.value) return alert('请先上传报告照片')
+
+  parsing.value = true
+  try {
+    const res = await parseApi.report(uploadedUrl.value, form.categoryId)
+    extractResult.value = res.data
+    reviewVisible.value = true
+    const n = res.data.candidates?.length || 0
+    const m = res.data.unmatched?.length || 0
+    if (!n && !m) ElMessage.warning('没有识别到指标，请检查图片是否清晰')
+  } catch (e) {
+    ElMessage.error('识别失败: ' + e.message)
+  } finally {
+    parsing.value = false
+  }
+}
+
+function applyExtraction(items) {
+  if (!items.length) return ElMessage.warning('没有选择可入库的项')
+
+  for (const item of items) {
+    valueMap[item.indicatorId] = { ...item }
+  }
+
+  const r = extractResult.value || {}
+  // 新增时以报告上的日期为准；编辑时不动用户已有的日期
+  if (r.examDate && !isEdit.value) form.examDate = toDateTime(r.examDate)
+  if (r.hospital && !form.hospital) form.hospital = r.hospital
+
+  ElMessage.success(`已填入 ${items.length} 项，请核对后保存`)
+}
+
+function toDateTime(date) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date}T00:00` : date
 }
 
 async function handleSave() {
@@ -171,7 +238,13 @@ onMounted(async () => {
           valueMap[v.indicatorId] = {
             indicatorId: v.indicatorId,
             valueDecimal: v.valueDecimal,
-            valueText: v.valueText
+            valueText: v.valueText,
+            // 保留报告级参考区间，避免编辑一次就把快照丢了
+            refMin: v.refMin,
+            refMax: v.refMax,
+            refText: v.refText,
+            rawName: v.rawName,
+            rawUnit: v.rawUnit
           }
         }
       }

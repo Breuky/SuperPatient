@@ -58,7 +58,9 @@ const placeholder = computed(() => {
 
 function onNumberInput(e) {
   const val = e.target.value
+  // 保留 refMin/refMax/rawName 等字段，否则手改一次数值就把报告区间丢了
   emit('update:modelValue', {
+    ...props.modelValue,
     indicatorId: props.indicator.id,
     valueDecimal: val === '' ? null : parseFloat(val),
     valueText: null
@@ -67,6 +69,7 @@ function onNumberInput(e) {
 
 function onTextInput(e) {
   emit('update:modelValue', {
+    ...props.modelValue,
     indicatorId: props.indicator.id,
     valueDecimal: null,
     valueText: e.target.value || null

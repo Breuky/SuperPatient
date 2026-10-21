@@ -73,7 +73,10 @@ public class RecordService {
             vvo.setNormalMax(v.getRefMax() != null ? v.getRefMax()
                     : (ind != null ? ind.getNormalMax() : null));
             vvo.setRefText(v.getRefText());
+            vvo.setRefMin(v.getRefMin());
+            vvo.setRefMax(v.getRefMax());
             vvo.setRawName(v.getRawName());
+            vvo.setRawUnit(v.getRawUnit());
             valueVOs.add(vvo);
         }
 
