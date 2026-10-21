@@ -133,7 +133,7 @@ token: eyJhbGciOiJIUzI1NiJ9...
   "data": {
     "id": 1,
     "nickname": "测试医生",
-    "avatarUrl": "https://thirdwx.qlogo.cn/...",
+    "avatarUrl": null,
     "phone": "13800138000"
   }
 }
@@ -162,7 +162,7 @@ token: eyJhbGciOiJIUzI1NiJ9...
 ```json
 {
   "nickname": "张医生",
-  "avatarUrl": "https://thirdwx.qlogo.cn/new_avatar"
+  "avatarUrl": "https://example.com/avatar.png"
 }
 ```
 
@@ -175,7 +175,7 @@ token: eyJhbGciOiJIUzI1NiJ9...
   "data": {
     "id": 1,
     "nickname": "张医生",
-    "avatarUrl": "https://thirdwx.qlogo.cn/new_avatar",
+    "avatarUrl": "https://example.com/avatar.png",
     "phone": "13800138000"
   }
 }
@@ -1084,7 +1084,7 @@ token: eyJhbGciOiJIUzI1NiJ9...
 `GET /api/files/{id}`
 
 **认证**: 是，且仅上传者本人可读。除 `token` 请求头外，也支持 `?token=xxx` 查询参数
-（浏览器 `<img>` / 小程序 `<image>` 无法自定义请求头）。
+（浏览器 `<img>` 标签无法自定义请求头）。
 
 | 参数 | 位置 | 必填 | 说明 |
 |------|------|------|------|
