@@ -13,7 +13,7 @@ SET @uid := (SELECT id FROM `user` WHERE openid = 'demo_superpatient');
 
 INSERT INTO patient (user_id, name, gender, birth_date, diagnosis_date, notes)
 SELECT @uid, '演示患者（合成数据）', 1, '2010-05-12', '2025-03-15',
-       '示例 右股骨远端。仅用于演示趋势与参考区间变化，非真实病例'
+       '合成示例数据，用于演示趋势与参考区间变化'
 FROM DUAL
 WHERE NOT EXISTS (SELECT 1 FROM patient WHERE user_id = @uid);
 SET @pid := (SELECT id FROM patient WHERE user_id = @uid ORDER BY id LIMIT 1);

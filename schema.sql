@@ -1,5 +1,5 @@
 -- ============================================================
--- 检查指标记录系统 - MySQL 数据库 Schema
+-- 个人检查检验指标记录系统 - MySQL 数据库 Schema
 -- 版本: 1.0
 -- 字符集: utf8mb4 (支持中文和 Emoji)
 -- 引擎: InnoDB (支持事务和外键)
@@ -39,7 +39,7 @@ CREATE TABLE `patient` (
     `birth_date`     DATE         DEFAULT NULL COMMENT '出生日期',
     `diagnosis_date` DATE         DEFAULT NULL COMMENT '确诊日期',
     `phone`          VARCHAR(20)  DEFAULT NULL COMMENT '联系电话',
-    `notes`          TEXT         DEFAULT NULL COMMENT '备注信息 (如常规分型、分期等)',
+    `notes`          TEXT         DEFAULT NULL COMMENT '备注信息 (如既往病史、过敏史等)',
     `created_at`     DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `updated_at`     DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
     PRIMARY KEY (`id`),
@@ -159,96 +159,115 @@ CREATE TABLE IF NOT EXISTS `upload_file` (
 -- =================== 种子数据: 检查分类 ====================
 -- ============================================================
 INSERT INTO `exam_category` (`id`, `name`, `icon`, `sort_order`) VALUES
-(1, '抽血',     'blood',  1),
-(2, 'CT',      'ct',     2),
-(3, 'MRI',     'mri',    3),
-(4, '尿常规',  'pathology', 4),
-(5, '超声',  'ultrasound',  5);
+(1, '抽血',    'blood',      1),
+(2, '尿常规',  'urine',      2),
+(3, 'CT',     'ct',         3),
+(4, 'MRI',    'mri',        4),
+(5, '超声',    'ultrasound', 5);
 
 -- ============================================================
--- ============== 种子数据: 抽血指标模板 ====================
+-- ============== 种子数据: 抽血指标 (通用健康体检常见项) ======
 -- ============================================================
-INSERT INTO `exam_indicator` (`category_id`, `name`, `unit`, `value_type`, `normal_min`, `normal_max`, `sort_order`, `status`) VALUES
+INSERT INTO `exam_indicator` (`category_id`, `name`, `aliases`, `unit`, `value_type`, `normal_min`, `normal_max`, `sort_order`, `status`) VALUES
 -- 血常规
-(1, '血红蛋白',         'g/L',     'number', 120.0000, 160.0000, 1,  1),
-(1, '白细胞计数',       '10^9/L',  'number', 4.0000,   10.0000,  2,  1),
-(1, '中性粒细胞百分比', '%',       'number', 40.0000,  75.0000,  3,  1),
-(1, '淋巴细胞百分比',   '%',       'number', 20.0000,  50.0000,  4,  1),
-(1, '血小板计数',       '10^9/L',  'number', 100.0000, 300.0000, 5,  1),
--- 生化指标
-(1, '乳酸脱氢酶',       'U/L',     'number', 120.0000, 250.0000, 6,  1),
-(1, '碱性磷酸酶',       'U/L',     'number', 40.0000,  150.0000, 7,  1),
-(1, '血钙',             'mmol/L',  'number', 2.1000,   2.6000,   8,  1),
+(1, '血红蛋白',           'HGB,Hb,HB,血红蛋白浓度',            'g/L',    'number', 120.0000, 160.0000, 1,  1),
+(1, '白细胞计数',         'WBC,白细胞,白细胞数,LEU',          '10^9/L', 'number', 4.0000,   10.0000,  2,  1),
+(1, '中性粒细胞百分比',   'NEUT%,NEUT,中性粒细胞比率',        '%',      'number', 40.0000,  75.0000,  3,  1),
+(1, '淋巴细胞百分比',     'LYMPH%,LYM,淋巴细胞比率',          '%',      'number', 20.0000,  50.0000,  4,  1),
+(1, '血小板计数',         'PLT,血小板,血小板数',              '10^9/L', 'number', 100.0000, 300.0000, 5,  1),
+-- 血糖与血脂
+(1, '空腹血糖',           'GLU,血糖,空腹葡萄糖,葡萄糖',       'mmol/L', 'number', 3.9000,   6.1000,   6,  1),
+(1, '糖化血红蛋白',       'HbA1c,HbA1C,GHb,糖化血红蛋白A1c',   '%',      'number', 4.0000,   6.0000,   7,  1),
+(1, '总胆固醇',           'TC,CHOL,胆固醇',                    'mmol/L', 'number', 2.8000,   5.2000,   8,  1),
+(1, '甘油三酯',           'TG,三酰甘油',                       'mmol/L', 'number', 0.4000,   1.7000,   9,  1),
+(1, '低密度脂蛋白胆固醇', 'LDL-C,LDL,低密度脂蛋白',            'mmol/L', 'number', 0.0000,   3.4000,   10, 1),
+-- 肝肾功能
+(1, '丙氨酸氨基转移酶',   'ALT,GPT,谷丙转氨酶',                'U/L',    'number', 9.0000,   50.0000,  11, 1),
+(1, '总胆红素',           'TBIL,T-BIL,总胆红素测定',           'umol/L', 'number', 0.0000,   26.0000,  12, 1),
+(1, '肌酐',               'Cr,CREA,血肌酐,肌酐测定',           'umol/L', 'number', 44.0000,  106.0000, 13, 1),
+(1, '尿酸',               'UA,血尿酸,尿酸测定',                'umol/L', 'number', 208.0000, 428.0000, 14, 1),
+-- 其他生化
+(1, '乳酸脱氢酶',         'LDH,乳酸脱氢酶测定',                'U/L',    'number', 120.0000, 250.0000, 15, 1),
+(1, '碱性磷酸酶',         'ALP,AKP,碱性磷酸酶测定',            'U/L',    'number', 40.0000,  150.0000, 16, 1),
+(1, '血钙',               'Ca,总钙,钙',                        'mmol/L', 'number', 2.1000,   2.6000,   17, 1),
 -- 炎症标志物
-(1, 'C反应蛋白',        'mg/L',    'number', 0.0000,   10.0000,  9,  1),
-(1, '血沉',             'mm/h',    'number', 0.0000,   15.0000,  10, 1);
+(1, 'C反应蛋白',          'CRP,hs-CRP,超敏C反应蛋白',          'mg/L',   'number', 0.0000,   10.0000,  18, 1),
+(1, '血沉',               'ESR,红细胞沉降率,血沉率',           'mm/h',   'number', 0.0000,   15.0000,  19, 1);
 
 -- ============================================================
--- ============== 种子数据: CT 指标模板 =====================
--- (CT 检查多为描述性文本, 使用 text 类型)
+-- ============== 种子数据: 尿常规指标 ========================
 -- ============================================================
-INSERT INTO `exam_indicator` (`category_id`, `name`, `unit`, `value_type`, `normal_min`, `normal_max`, `sort_order`, `status`) VALUES
-(2, '检查部位',       'mm',  'number', NULL, NULL, 1, 1),
-(2, '影像描述',         NULL,  'text',   NULL, NULL, 2, 1),
-(2, '检查结论',       NULL,  'text',   NULL, NULL, 3, 1),
-(2, '检查结论',       NULL,  'text',   NULL, NULL, 4, 1),
-(2, '检查结论',         NULL,  'text',   NULL, NULL, 5, 1),
-(2, '影像描述',         NULL,  'text',   NULL, NULL, 6, 1);
+INSERT INTO `exam_indicator` (`category_id`, `name`, `aliases`, `unit`, `value_type`, `normal_min`, `normal_max`, `sort_order`, `status`) VALUES
+(2, '尿蛋白',  'PRO,URO-PRO,蛋白质',   NULL, 'text', NULL, NULL, 1, 1),
+(2, '尿糖',    'GLU-U,尿葡萄糖',       NULL, 'text', NULL, NULL, 2, 1),
+(2, '尿隐血',  'BLD,隐血,潜血',        NULL, 'text', NULL, NULL, 3, 1);
 
 -- ============================================================
--- ============== 种子数据: MRI 指标模板 ====================
+-- ============== 种子数据: 影像类指标模板 ====================
+-- (影像报告以描述性文本为主, 统一用 text 类型)
 -- ============================================================
-INSERT INTO `exam_indicator` (`category_id`, `name`, `unit`, `value_type`, `normal_min`, `normal_max`, `sort_order`, `status`) VALUES
-(3, '检查部位',       'mm',  'number', NULL, NULL, 1, 1),
-(3, '检查结论',         NULL,  'text',   NULL, NULL, 2, 1),
-(3, '检查结论',     'mm',  'number', NULL, NULL, 3, 1),
-(3, '检查结论',       NULL,  'text',   NULL, NULL, 4, 1),
-(3, '检查结论',   NULL,  'text',   NULL, NULL, 5, 1),
-(3, '影像描述',         NULL,  'text',   NULL, NULL, 6, 1);
-
+INSERT INTO `exam_indicator` (`category_id`, `name`, `aliases`, `unit`, `value_type`, `normal_min`, `normal_max`, `sort_order`, `status`) VALUES
+(3, '检查部位', '部位,扫描部位', NULL, 'text', NULL, NULL, 1, 1),
+(3, '影像描述', '描述,影像所见', NULL, 'text', NULL, NULL, 2, 1),
+(3, '检查结论', '结论,诊断意见', NULL, 'text', NULL, NULL, 3, 1),
+(4, '检查部位', '部位,扫描部位', NULL, 'text', NULL, NULL, 1, 1),
+(4, '影像描述', '描述,影像所见', NULL, 'text', NULL, NULL, 2, 1),
+(4, '检查结论', '结论,诊断意见', NULL, 'text', NULL, NULL, 3, 1),
+(5, '检查部位', '部位,扫查部位', NULL, 'text', NULL, NULL, 1, 1),
+(5, '影像描述', '描述,超声所见', NULL, 'text', NULL, NULL, 2, 1),
+(5, '检查结论', '结论,超声提示', NULL, 'text', NULL, NULL, 3, 1);
 
 -- ============================================================
--- ============== 示例数据 (开发测试用) =====================
+-- ============== 示例数据 (合成, 开发测试用) =================
 -- ============================================================
 
--- 测试用户
 INSERT INTO `user` (`id`, `openid`, `nickname`, `avatar_url`) VALUES
-(1, 'test_openid_001', '测试医生', NULL);
+(1, 'test_openid_001', '示例用户', NULL);
 
--- 测试患者
 INSERT INTO `patient` (`id`, `user_id`, `name`, `gender`, `birth_date`, `diagnosis_date`, `phone`, `notes`) VALUES
-(1, 1, '张明', 1, '2010-05-12', '2025-03-15', '13800138000', '年度体检，无特殊病史');
+(1, 1, '示例患者', 1, '1985-06-12', NULL, NULL, '合成示例数据，用于本地开发调试');
 
--- 检查记录 1: 3月28日抽血
+-- 记录 1: 年度体检（市第一人民医院）
 INSERT INTO `exam_record` (`id`, `patient_id`, `category_id`, `exam_date`, `hospital`, `doctor`, `notes`) VALUES
-(1, 1, 1, '2026-03-28 09:30:00', '市第一人民医院', '陈主任', '年度体检');
+(1, 1, 1, '2026-03-28 09:30:00', '市第一人民医院', '王医生', '年度体检，空腹');
 
-INSERT INTO `exam_value` (`record_id`, `indicator_id`, `value_decimal`, `is_abnormal`) VALUES
-(1, 1, 142.0000, 0),  -- 血红蛋白 142 正常
-(1, 2, 6.8000,   0),  -- 白细胞 6.8 正常
-(1, 5, 185.0000, 0),  -- 血小板 185 正常
-(1, 9, 5.2000,   0);  -- CRP 5.2 正常
+INSERT INTO `exam_value` (`record_id`, `indicator_id`, `value_decimal`, `ref_min`, `ref_max`, `is_abnormal`)
+SELECT 1, i.id, v.val, v.rmin, v.rmax, v.abn
+FROM `exam_indicator` i
+JOIN (SELECT '血红蛋白' nm,   142 val, 120 rmin, 160 rmax, 0 abn
+      UNION ALL SELECT '白细胞计数', 6.8, 4, 10, 0
+      UNION ALL SELECT '血小板计数', 185, 100, 300, 0
+      UNION ALL SELECT '空腹血糖',   6.4, 3.9, 6.1, 1
+      UNION ALL SELECT '总胆固醇',   5.6, 2.8, 5.2, 1
+      UNION ALL SELECT 'C反应蛋白',  5.2, 0, 10, 0) v ON v.nm = i.name
+WHERE i.category_id = 1;
 
--- 检查记录 2: 5月20日抽血
+-- 记录 2: 复查（市第二人民医院，参考区间与上一家不同）
 INSERT INTO `exam_record` (`id`, `patient_id`, `category_id`, `exam_date`, `hospital`, `doctor`, `notes`) VALUES
-(2, 1, 1, '2026-05-20 10:00:00', '市第一人民医院', '陈主任', '复查');
+(2, 1, 1, '2026-05-20 10:00:00', '市第二人民医院', '李医生', '复查');
 
-INSERT INTO `exam_value` (`record_id`, `indicator_id`, `value_decimal`, `is_abnormal`) VALUES
-(2, 1, 125.0000, 0),  -- 血红蛋白 125 正常
-(2, 2, 3.2000,   2),  -- 白细胞 3.2 偏低
-(2, 5, 90.0000,  2),  -- 血小板 90 偏低
-(2, 9, 18.5000,  1);  -- CRP 18.5 偏高
+INSERT INTO `exam_value` (`record_id`, `indicator_id`, `value_decimal`, `ref_min`, `ref_max`, `is_abnormal`)
+SELECT 2, i.id, v.val, v.rmin, v.rmax, v.abn
+FROM `exam_indicator` i
+JOIN (SELECT '血红蛋白' nm,   138 val, 115 rmin, 150 rmax, 0 abn
+      UNION ALL SELECT '白细胞计数', 5.4, 3.5, 9.5, 0
+      UNION ALL SELECT '血小板计数', 210, 125, 350, 0
+      UNION ALL SELECT '空腹血糖',   5.8, 4.0, 6.0, 0
+      UNION ALL SELECT '总胆固醇',   5.1, 3.0, 5.7, 0
+      UNION ALL SELECT 'C反应蛋白',  3.1, 0, 8, 0) v ON v.nm = i.name
+WHERE i.category_id = 1;
 
--- 检查记录 3: 6月15日CT
-INSERT INTO `exam_record` (`id`, `patient_id`, `category_id`, `exam_date`, `hospital`, `doctor`, `notes`, `image_url`) VALUES
-(3, 1, 2, '2026-06-15 14:00:00', '市第一人民医院', '陈主任', '随访两周期后疗效评估', 'https://oss.example.com/report_003.jpg');
+-- 记录 3: 影像检查（文本型指标）
+INSERT INTO `exam_record` (`id`, `patient_id`, `category_id`, `exam_date`, `hospital`, `doctor`, `notes`) VALUES
+(3, 1, 3, '2026-06-15 14:00:00', '市第一人民医院', '王医生', '常规复查');
 
-INSERT INTO `exam_value` (`record_id`, `indicator_id`, `value_decimal`, `value_text`, `is_abnormal`) VALUES
-(3, 11, 45.0000, NULL,  0),  -- 检查部位 45mm
-(3, 12, NULL,     '右股骨远端干骺端', 0),  -- 影像描述
-(3, 13, NULL,     '较前片未见明显变化', 0),
-(3, 14, NULL,     '检查结论明显缩小', 0),
-(3, 16, NULL,     '未见明显变化, 指标缩小约30%', 0);
+INSERT INTO `exam_value` (`record_id`, `indicator_id`, `value_text`, `is_abnormal`)
+SELECT 3, i.id, v.txt, 0
+FROM `exam_indicator` i
+JOIN (SELECT '检查部位' nm, '胸部' txt
+      UNION ALL SELECT '影像描述', '双肺纹理清晰，未见明显异常密度影'
+      UNION ALL SELECT '检查结论', '胸部 CT 未见明显异常') v ON v.nm = i.name
+WHERE i.category_id = 3;
 
 
 -- ============================================================
@@ -289,5 +308,3 @@ INSERT INTO `exam_value` (`record_id`, `indicator_id`, `value_decimal`, `value_t
 -- JOIN exam_category c ON r.category_id = c.id
 -- WHERE r.patient_id = 1
 -- GROUP BY c.name;
-
-<!-- schema.sql 结束 -->

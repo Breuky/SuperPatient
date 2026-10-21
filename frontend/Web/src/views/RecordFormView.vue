@@ -47,7 +47,7 @@
       </el-row>
 
       <el-form-item label="备注">
-        <el-input v-model="form.notes" type="textarea" :rows="2" placeholder="随访周期、特殊情况等" />
+        <el-input v-model="form.notes" type="textarea" :rows="2" placeholder="如：空腹、近期用药等" />
       </el-form-item>
     </el-card>
 

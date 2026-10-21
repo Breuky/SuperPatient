@@ -45,7 +45,7 @@
       <!-- 备注 -->
       <view class="form-row">
         <text class="row-label">备注</text>
-        <input class="row-input" placeholder="随访周期、医嘱等（选填）" value="{{notes}}" data-field="notes" bindinput="onFieldChange"/>
+        <input class="row-input" placeholder="空腹、近期用药等（选填）" value="{{notes}}" data-field="notes" bindinput="onFieldChange"/>
       </view>
     </view>
   </view>

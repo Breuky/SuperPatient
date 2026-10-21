@@ -416,15 +416,15 @@ token: eyJhbGciOiJIUzI1NiJ9...
       "sortOrder": 2,
       "indicators": [
         {
-          "id": 11,
+          "id": 20,
           "name": "检查部位",
-          "unit": "mm",
-          "valueType": "number",
+          "unit": null,
+          "valueType": "text",
           "normalMin": null,
           "normalMax": null
         },
         {
-          "id": 12,
+          "id": 21,
           "name": "影像描述",
           "unit": null,
           "valueType": "text",
@@ -686,7 +686,7 @@ token: eyJhbGciOiJIUzI1NiJ9...
     { "indicatorId": 11, "valueDecimal": 38.0 },
     { "indicatorId": 12, "valueText": "右股骨远端干骺端" },
     { "indicatorId": 13, "valueText": "较前片未见明显变化" },
-    { "indicatorId": 16, "valueText": "指标较前缩小约50%，未见明显变化" }
+    { "indicatorId": 16, "valueText": "较前片未见明显变化" }
   ]
 }
 ```
@@ -851,11 +851,11 @@ token: eyJhbGciOiJIUzI1NiJ9...
       "recordCount": 5
     },
     {
-      "indicatorId": 11,
-      "indicatorName": "检查部位",
-      "unit": "mm",
-      "categoryId": 2,
-      "categoryName": "CT",
+      "indicatorId": 1,
+      "indicatorName": "血红蛋白",
+      "unit": "g/L",
+      "categoryId": 1,
+      "categoryName": "抽血",
       "recordCount": 3
     }
   ]
@@ -1172,4 +1172,4 @@ else:
     is_abnormal = 0  (正常)
 ```
 
-如果 `normal_min` 或 `normal_max` 为 NULL（如 CT 指标大小），则 `is_abnormal` 始终为 0。
+如果 `normal_min` 或 `normal_max` 为 NULL（如影像类文本指标），则 `is_abnormal` 始终为 0。

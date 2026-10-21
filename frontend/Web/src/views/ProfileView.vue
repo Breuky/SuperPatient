@@ -67,7 +67,7 @@
           <el-input v-model="editForm.phone" placeholder="联系电话" />
         </el-form-item>
         <el-form-item label="备注">
-          <el-input v-model="editForm.notes" type="textarea" :rows="3" placeholder="常规分型、分期等" />
+          <el-input v-model="editForm.notes" type="textarea" :rows="3" placeholder="既往病史、过敏史等" />
         </el-form-item>
       </el-form>
       <template #footer>

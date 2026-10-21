@@ -23,7 +23,7 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title("SuperPatient API")
                         .version("1.0.0")
-                        .description("检查指标记录系统 - 后端接口文档")
+                        .description("个人检查检验指标记录系统 - 后端接口文档")
                         .contact(new Contact()
                                 .name("SuperPatient Team")))
                 .addSecurityItem(new SecurityRequirement().addList("tokenAuth"))

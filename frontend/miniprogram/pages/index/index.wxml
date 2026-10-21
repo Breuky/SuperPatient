@@ -116,7 +116,7 @@
       <!-- 备注 -->
       <view class="form-item">
         <text class="form-label">备注</text>
-        <textarea class="form-textarea" placeholder="常规分型、分期等（选填）" value="{{formData.notes}}" data-field="notes" bindinput="onFieldChange" maxlength="500"/>
+        <textarea class="form-textarea" placeholder="既往病史、过敏史等（选填）" value="{{formData.notes}}" data-field="notes" bindinput="onFieldChange" maxlength="500"/>
       </view>
     </view>
 
