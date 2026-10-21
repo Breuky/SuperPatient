@@ -48,6 +48,14 @@ mysql -uroot -p --default-character-set=utf8mb4 super_patient < db/2026-10-21_ex
 
 已有库只需执行 `db/` 下的迁移脚本（幂等，可重复执行）。
 
+可选：导入**合成**演示数据（6 次血常规、两家医院、参考区间不同），用于演示趋势页的分段参考带：
+
+```bash
+mysql -uroot -p --default-character-set=utf8mb4 super_patient < db/demo_trend_data.sql
+```
+
+Web 登录时 `code` 填 `demo_superpatient` 即可查看。删除：`DELETE FROM user WHERE openid='demo_superpatient';`
+
 ### 2. 本地配置
 
 复制模板并填入真实凭据（该文件不入库）：
@@ -106,5 +114,5 @@ cd backend && mvn test
 
 - 小程序端尚未接入抽取，仍需手工录入
 - 参考区间的性别/年龄规则未落库，目前靠报告自带区间
-- 趋势图的参考带取指标默认值，尚未按每点区间分段绘制
+- 趋势图的参考带按每次报告区间分段；只有一个数据点的指标看不出阶梯变化
 - 无审计日志与数据导出权限控制

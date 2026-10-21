@@ -19,27 +19,123 @@ let chart = null
 
 const hasData = computed(() => props.points && props.points.length > 0)
 
+/**
+ * 每个点用自己的参考区间（本次报告印刷值），缺失时回落指标默认区间。
+ * 同一指标不同医院区间不同，所以不能画一条固定的带。
+ */
+function refOf(point) {
+  const ind = props.indicator || {}
+  const min = point?.refMin ?? ind.normalMin
+  const max = point?.refMax ?? ind.normalMax
+  return [min ?? null, max ?? null]
+}
+
+function refLabel(point) {
+  const [min, max] = refOf(point)
+  if (point?.refText) return point.refText
+  if (min != null && max != null) return `${min} ~ ${max}`
+  if (min != null) return `> ${min}`
+  if (max != null) return `< ${max}`
+  return '-'
+}
+
 function buildOption() {
-  const dates = props.points.map(p => p.examDate || '')
-  const values = props.points.map(p => p.value)
-  const min = props.indicator?.normalMin
-  const max = props.indicator?.normalMax
+  const points = props.points || []
+  const dates = points.map(p => p.examDate || '')
+  const values = points.map(p => p.value)
   const unit = props.indicator?.unit || ''
   const name = props.indicator?.name || '指标'
 
-  const markArea = (min != null && max != null) ? {
-    silent: true,
-    data: [[{ yAxis: min, itemStyle: { color: 'rgba(7,193,96,0.06)' } },
-             { yAxis: max }]]
-  } : null
+  // 参考带你用两个堆叠 series 实现，step 让区间在两次复查之间保持阶梯状
+  const bandBase = points.map(p => refOf(p)[0])
+  const bandSpan = points.map(p => {
+    const [min, max] = refOf(p)
+    return min != null && max != null ? Number((max - min).toFixed(4)) : null
+  })
+  const hasBand = bandBase.some((v, i) => v != null && bandSpan[i] != null)
+
+  const series = []
+
+  if (hasBand) {
+    series.push({
+      name: '__refBase',
+      type: 'line',
+      stack: 'refBand',
+      step: 'end',
+      data: bandBase,
+      symbol: 'none',
+      lineStyle: { opacity: 0 },
+      areaStyle: { opacity: 0 },
+      silent: true,
+      z: 0,
+      tooltip: { show: false }
+    })
+    series.push({
+      name: '__refSpan',
+      type: 'line',
+      stack: 'refBand',
+      step: 'end',
+      data: bandSpan,
+      symbol: 'none',
+      lineStyle: { opacity: 0 },
+      areaStyle: { color: 'rgba(7,193,96,0.12)' },
+      silent: true,
+      z: 0,
+      tooltip: { show: false }
+    })
+  }
+
+  series.push({
+    name,
+    type: 'line',
+    data: values,
+    smooth: true,
+    symbol: 'circle',
+    symbolSize: 8,
+    z: 3,
+    lineStyle: { color: '#07C160', width: 2 },
+    itemStyle: {
+      color(p) {
+        const pt = points[p.dataIndex]
+        if (pt?.isAbnormal === 1) return '#FA5151'
+        if (pt?.isAbnormal === 2) return '#1890FF'
+        return '#07C160'
+      }
+    },
+    label: {
+      show: true,
+      position: 'top',
+      color: '#333',
+      fontSize: 11,
+      fontWeight: 500,
+      formatter(p) {
+        const pt = points[p.dataIndex]
+        const val = p.value
+        if (pt?.isAbnormal === 1) return `{high|${val}↑}`
+        if (pt?.isAbnormal === 2) return `{low|${val}↓}`
+        return `{normal|${val}}`
+      },
+      rich: {
+        normal: { color: '#07C160' },
+        high: { color: '#FA5151' },
+        low: { color: '#1890FF' }
+      }
+    }
+  })
 
   return {
     grid: { top: 30, right: 20, bottom: 35, left: 60 },
     tooltip: {
       trigger: 'axis',
-      formatter(p) {
-        const pt = p[0]
-        return `${pt.axisValue}<br/>${name}: <b>${pt.data}</b> ${unit}`
+      formatter(list) {
+        const idx = list?.[0]?.dataIndex ?? 0
+        const pt = points[idx]
+        if (!pt) return ''
+        const flag = pt.isAbnormal === 1 ? ' <span style="color:#FA5151">↑ 偏高</span>'
+          : pt.isAbnormal === 2 ? ' <span style="color:#1890FF">↓ 偏低</span>' : ''
+        return `<div style="color:#999;font-size:12px">${pt.examDate}</div>`
+          + `<div style="margin-top:4px">${name}: <b>${pt.value}</b> ${unit}${flag}</div>`
+          + `<div style="color:#909399;font-size:12px">参考区间: ${refLabel(pt)}</div>`
       }
     },
     xAxis: {
@@ -57,54 +153,9 @@ function buildOption() {
       nameGap: 12,
       nameTextStyle: { color: '#666', fontSize: 11, fontWeight: 500 },
       axisLabel: { color: '#999', fontSize: 10 },
-      splitLine: { lineStyle: { color: '#f0f0f0' } },
+      splitLine: { lineStyle: { color: '#f0f0f0' } }
     },
-    series: [{
-      type: 'line',
-      data: values,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 8,
-      lineStyle: { color: '#07C160', width: 2 },
-      itemStyle: {
-        color(p) {
-          const pt = props.points[p.dataIndex]
-          if (pt?.isAbnormal === 1) return '#FA5151'
-          if (pt?.isAbnormal === 2) return '#1890FF'
-          return '#07C160'
-        }
-      },
-      label: {
-        show: true,
-        position: 'top',
-        color: '#333',
-        fontSize: 11,
-        fontWeight: 500,
-        formatter(p) {
-          const pt = props.points[p.dataIndex]
-          const val = p.value
-          if (pt?.isAbnormal === 1) return `{high|${val}↑}`
-          if (pt?.isAbnormal === 2) return `{low|${val}↓}`
-          return `{normal|${val}}`
-        },
-        rich: {
-          normal: { color: '#07C160' },
-          high: { color: '#FA5151' },
-          low: { color: '#1890FF' }
-        }
-      },
-      markArea,
-      markLine: (max != null || min != null) ? {
-        silent: true,
-        symbol: 'none',
-        lineStyle: { type: 'dashed', color: '#07C160', width: 1 },
-        label: { fontSize: 10, color: '#07C160' },
-        data: [
-          ...(max != null ? [{ yAxis: max, label: { formatter: '上限 ' + max } }] : []),
-          ...(min != null ? [{ yAxis: min, label: { formatter: '下限 ' + min } }] : [])
-        ]
-      } : null
-    }]
+    series
   }
 }
 
