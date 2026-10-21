@@ -7,6 +7,8 @@ import java.math.BigDecimal;
 public class IndicatorUpdateRequest {
     private Integer categoryId;
     private String name;
+    /** 逗号分隔的别名；传空字符串表示清空 */
+    private String aliases;
     private String unit;
     private String valueType;
     private BigDecimal normalMin;

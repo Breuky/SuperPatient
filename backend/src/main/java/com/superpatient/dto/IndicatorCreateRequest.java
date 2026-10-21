@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 public class IndicatorCreateRequest {
     private Integer categoryId;
     private String name;
+    private String aliases;
     private String unit;
     private String valueType;
     private BigDecimal normalMin;

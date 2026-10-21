@@ -31,8 +31,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO exam_indicator (category_id, name, unit, value_type, normal_min, normal_max, sort_order, status)
-        VALUES (#{categoryId}, #{name}, #{unit}, #{valueType}, #{normalMin}, #{normalMax}, #{sortOrder}, 1)
+        INSERT INTO exam_indicator (category_id, name, aliases, unit, value_type, normal_min, normal_max, sort_order, status)
+        VALUES (#{categoryId}, #{name}, #{aliases}, #{unit}, #{valueType}, #{normalMin}, #{normalMax}, #{sortOrder}, 1)
     </insert>
 
     <update id="update">
@@ -40,6 +40,8 @@
         <set>
             <if test="categoryId != null">category_id = #{categoryId},</if>
             <if test="name != null">name = #{name},</if>
+            <!-- aliases 允许为空字符串（表示清空），所以只判 null -->
+            <if test="aliases != null">aliases = #{aliases},</if>
             <if test="unit != null">unit = #{unit},</if>
             <if test="valueType != null">value_type = #{valueType},</if>
             <if test="normalMin != null">normal_min = #{normalMin},</if>

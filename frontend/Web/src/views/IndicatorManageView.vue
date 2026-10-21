@@ -17,10 +17,11 @@
       </el-tabs>
 
       <el-table v-loading="loading" :data="filteredIndicators" stripe>
-        <el-table-column prop="name" label="名称">
+        <el-table-column label="名称" min-width="160">
           <template #default="{ row }">
             {{ row.name }}
             <el-tag v-if="row.status === 0" type="info" size="small" style="margin-left:8px">已禁用</el-tag>
+            <div v-if="row.aliases" class="alias-hint">别名：{{ row.aliases }}</div>
           </template>
         </el-table-column>
         <el-table-column label="类型" width="100">
@@ -67,6 +68,10 @@
         </el-form-item>
         <el-form-item label="单位">
           <el-input v-model="form.unit" placeholder="如：g/L" />
+        </el-form-item>
+        <el-form-item label="别名">
+          <el-input v-model="form.aliases" placeholder="报告上的其他写法，逗号分隔，如：HGB,Hb,HB" />
+          <div class="field-tip">抽取时按别名把报告原文归到本指标，多个用逗号分隔</div>
         </el-form-item>
         <el-form-item label="值类型">
           <el-select v-model="form.valueType" style="width:100%">
@@ -201,7 +206,7 @@ const ruleForm = reactive({
 })
 
 const form = reactive({
-  categoryId: null, name: '', unit: '', valueType: 'number',
+  categoryId: null, name: '', aliases: '', unit: '', valueType: 'number',
   normalMin: null, normalMax: null, sortOrder: 0
 })
 
@@ -213,7 +218,7 @@ const filteredIndicators = computed(() => {
 function resetForm() {
   editing.value = null
   form.categoryId = categories.value[0]?.id || null
-  form.name = ''; form.unit = ''; form.valueType = 'number'
+  form.name = ''; form.aliases = ''; form.unit = ''; form.valueType = 'number'
   form.normalMin = null; form.normalMax = null; form.sortOrder = 0
 }
 
@@ -237,7 +242,7 @@ function openAdd() { resetForm(); showForm.value = true }
 function editInd(ind) {
   editing.value = ind
   form.categoryId = ind.categoryId
-  form.name = ind.name; form.unit = ind.unit || ''
+  form.name = ind.name; form.aliases = ind.aliases || ''; form.unit = ind.unit || ''
   form.valueType = ind.valueType || 'number'
   form.normalMin = ind.normalMin; form.normalMax = ind.normalMax
   form.sortOrder = ind.sortOrder || 0
@@ -348,4 +353,6 @@ onMounted(fetchData)
 
 <style scoped>
 .card-header { display: flex; justify-content: space-between; align-items: center; }
+.alias-hint { font-size: 12px; color: #909399; margin-top: 2px; }
+.field-tip { font-size: 12px; color: #909399; margin-top: 4px; }
 </style>
