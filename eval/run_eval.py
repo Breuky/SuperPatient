@@ -118,25 +118,34 @@ def load_raw(path):
 
 
 def evaluate(labels, candidates):
-    by_name = {}
+    by_name, by_name_unit = {}, {}
     for c in candidates:
         # 没有值的行（分组标题、模型漏读）不算"抽到"
         if c["value"] is None or str(c["value"]).strip() == "":
             continue
-        by_name.setdefault(norm_name(c["rawName"]), []).append(c)
+        key = norm_name(c["rawName"])
+        by_name.setdefault(key, []).append(c)
+        by_name_unit.setdefault((key, norm_unit(c["unit"])), []).append(c)
 
     stats = {"labels": len(labels), "matched": 0, "value_ok": 0,
-             "unit_ok": 0, "normalized": 0, "fp": 0}
+             "unit_ok": 0, "unit_asserted": 0, "normalized": 0, "fp": 0}
     missing, wrong_value, wrong_unit = [], [], []
     used = set()
 
     for lb in labels:
         key = norm_name(lb["name"])
         cand = None
-        for c in by_name.get(key, []):
-            if id(c) not in used:
-                cand = c
-                break
+        # 同名多行（如"平均红细胞血红蛋白"同时指 MCH 和 MCHC）优先按单位区分
+        if lb["unit"]:
+            for c in by_name_unit.get((key, norm_unit(lb["unit"])), []):
+                if id(c) not in used:
+                    cand = c
+                    break
+        if cand is None:
+            for c in by_name.get(key, []):
+                if id(c) not in used:
+                    cand = c
+                    break
         if cand is None:
             missing.append(lb["name"])
             continue
@@ -152,10 +161,13 @@ def evaluate(labels, candidates):
         elif str(lb["value"]) == str(cand["value"]):
             stats["value_ok"] += 1
 
-        if norm_unit(lb["unit"]) == norm_unit(cand["unit"]):
-            stats["unit_ok"] += 1
-        else:
-            wrong_unit.append("%s: 标注 %s / 抽出 %s" % (lb["name"], lb["unit"], cand["unit"]))
+        # 报告上本来就没印单位时（如红细胞压积这类比值），不参与单位准确率统计
+        if lb["unit"]:
+            stats["unit_asserted"] += 1
+            if norm_unit(lb["unit"]) == norm_unit(cand["unit"]):
+                stats["unit_ok"] += 1
+            else:
+                wrong_unit.append("%s: 标注 %s / 抽出 %s" % (lb["name"], lb["unit"], cand["unit"]))
 
         if cand["indicatorId"] is not None:
             stats["normalized"] += 1
@@ -172,6 +184,7 @@ def pct(a, b):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw", default="raw2")
+    ap.add_argument("--only", default="", help="只跑指定样本，逗号分隔，如 01,03")
     ap.add_argument("--labels", default="labels")
     args = ap.parse_args()
 
@@ -179,14 +192,19 @@ def main():
     raw_dir = os.path.join(root, args.raw)
     label_dir = os.path.join(root, args.labels)
 
-    total = {"labels": 0, "matched": 0, "value_ok": 0, "unit_ok": 0, "normalized": 0, "fp": 0}
+    total = {"labels": 0, "matched": 0, "value_ok": 0, "unit_ok": 0,
+             "unit_asserted": 0, "normalized": 0, "fp": 0}
     lines = ["| 样本 | 标注行 | 抽到 | 召回率 | 数值准确 | 单位准确 | 归一化 | 误报 |",
              "|---|---|---|---|---|---|---|---|"]
+
+    only = [x.strip() for x in args.only.split(",") if x.strip()]
 
     for fn in sorted(os.listdir(label_dir)):
         if not fn.endswith(".csv"):
             continue
         name = fn[:-4]
+        if only and name not in only:
+            continue
         raw_path = os.path.join(raw_dir, name + ".json")
         if not os.path.exists(raw_path):
             print("缺少抽取结果:", raw_path)
@@ -200,7 +218,7 @@ def main():
             name, s["labels"], s["matched"],
             pct(s["matched"], s["labels"]),
             pct(s["value_ok"], s["matched"]),
-            pct(s["unit_ok"], s["matched"]),
+            pct(s["unit_ok"], s["unit_asserted"]),
             pct(s["normalized"], s["matched"]),
             s["fp"]))
         if missing:
@@ -214,7 +232,7 @@ def main():
         total["labels"], total["matched"],
         pct(total["matched"], total["labels"]),
         pct(total["value_ok"], total["matched"]),
-        pct(total["unit_ok"], total["matched"]),
+        pct(total["unit_ok"], total["unit_asserted"]),
         pct(total["normalized"], total["matched"]),
         total["fp"]))
 
