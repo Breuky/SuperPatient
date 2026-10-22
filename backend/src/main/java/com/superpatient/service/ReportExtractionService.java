@@ -106,8 +106,21 @@ public class ReportExtractionService {
             if (match == null) {
                 ExtractResultVO.Unmatched unmatched = new ExtractResultVO.Unmatched();
                 unmatched.setRawName(rawName);
-                unmatched.setRawValue(rawValue);
-                unmatched.setRawUnit(rawUnit);
+
+                // 未匹配行同样要把 "0.15 mmol/L" 拆成数值 + 单位，方便人工判断
+                String displayValue = rawValue;
+                String displayUnit = rawUnit;
+                if (rawValue != null) {
+                    Matcher vm = VALUE_WITH_UNIT.matcher(rawValue.trim());
+                    if (vm.matches()) {
+                        displayValue = vm.group(1);
+                        if (displayUnit == null || displayUnit.isBlank()) {
+                            displayUnit = vm.group(2).trim();
+                        }
+                    }
+                }
+                unmatched.setRawValue(displayValue);
+                unmatched.setRawUnit(displayUnit);
                 unmatched.setRefText(text(item, "refText"));
                 vo.getUnmatched().add(unmatched);
                 continue;
