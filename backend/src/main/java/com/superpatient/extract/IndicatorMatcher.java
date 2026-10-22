@@ -63,6 +63,11 @@ public class IndicatorMatcher {
                 .toUpperCase();
         t = t.replaceAll("\\([^)]*\\)", "");
         t = t.replaceAll("\\[[^]]*]", "");
+        // 连字符不影响语义：C-反应蛋白 = C反应蛋白，25-OH-VD = 25OHVD
+        t = t.replaceAll("[-－—–_]", "");
+        // 报告里常用的异常标记与结尾标点
+        t = t.replaceAll("^[*＊↑↓▲△☆#]+", "");
+        t = t.replaceAll("[*＊↑↓▲△☆.,，。;；]+$", "");
         return t;
     }
 }

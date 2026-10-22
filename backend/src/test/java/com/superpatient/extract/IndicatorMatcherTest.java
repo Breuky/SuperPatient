@@ -17,7 +17,8 @@ class IndicatorMatcherTest {
             indicator(2, "白细胞计数", "WBC,白细胞,LEU"),
             indicator(3, "血小板计数", "PLT,血小板"),
             indicator(4, "直接胆红素", "DBIL,结合胆红素"),
-            indicator(5, "总胆红素", "TBIL")
+            indicator(5, "总胆红素", "TBIL"),
+            indicator(6, "C反应蛋白", "CRP,hs-CRP")
     );
 
     @Test
@@ -39,6 +40,14 @@ class IndicatorMatcherTest {
     void stripsParentheticalSuffixBeforeMatching() {
         assertEquals(3, matcher.match("血小板计数(PLT)", pool).indicator().getId());
         assertEquals(1, matcher.match("血红蛋白（HGB）", pool).indicator().getId());
+    }
+
+    @Test
+    void ignoresMarkersAndPunctuation() {
+        assertEquals(2, matcher.match("*白细胞计数", pool).indicator().getId());
+        assertEquals(2, matcher.match("白细胞计数↑", pool).indicator().getId());
+        assertEquals(1, matcher.match("血红蛋白.", pool).indicator().getId());
+        assertEquals(6, matcher.match("C-反应蛋白", pool).indicator().getId(), "连字符不影响匹配");
     }
 
     @Test
