@@ -140,7 +140,8 @@ public class ReportExtractionService {
                 warnings.add(unit.warning());
             }
             c.setValueDecimal(value);
-            c.setUnit(indicator.getUnit());
+            // 换算成功用指标库单位；无法换算时保留报告原始单位，避免"值 336 却标 pg"
+            c.setUnit(unit.unit());
             if (value.signum() < 0 || value.compareTo(MAX_REASONABLE) > 0) {
                 warnings.add("数值超出合理范围: " + value.toPlainString());
             }

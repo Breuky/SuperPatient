@@ -36,15 +36,26 @@ class IndicatorMatcherTest {
     }
 
     @Test
-    void matchesLongerReportNameByContains() {
-        IndicatorMatcher.Match m = matcher.match("血小板计数(PLT)", pool);
-        assertEquals(3, m.indicator().getId());
+    void stripsParentheticalSuffixBeforeMatching() {
+        assertEquals(3, matcher.match("血小板计数(PLT)", pool).indicator().getId());
+        assertEquals(1, matcher.match("血红蛋白（HGB）", pool).indicator().getId());
     }
 
     @Test
     void doesNotConfuseSiblingIndicators() {
         assertEquals(4, matcher.match("直接胆红素", pool).indicator().getId());
         assertEquals(5, matcher.match("总胆红素", pool).indicator().getId());
+    }
+
+    /**
+     * 回归用例：真实化验单里 "平均红细胞血红蛋白" 和 "平均红细胞血红蛋白浓度"
+     * 都含 "血红蛋白"，早期用包含匹配会把它们错归成血红蛋白。
+     */
+    @Test
+    void doesNotMatchCompositeNamesBySubstring() {
+        assertNull(matcher.match("平均红细胞血红蛋白", pool), "MCH 不是血红蛋白");
+        assertNull(matcher.match("平均红细胞血红蛋白浓度", pool), "MCHC 不是血红蛋白");
+        assertNull(matcher.match("中性粒细胞绝对值", pool), "绝对值与百分比是两个指标");
     }
 
     @Test

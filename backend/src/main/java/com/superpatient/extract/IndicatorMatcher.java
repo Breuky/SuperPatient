@@ -8,8 +8,12 @@ import java.util.List;
 
 /**
  * 把报告上的指标名匹配到指标库。
- * 顺序：规范名精确 → 别名精确 → 双向包含（取最长匹配）。
- * 匹配不到时返回 null，交由用户在校对页手动指定或直接丢弃。
+ *
+ * 只做两种匹配：规范名精确、别名精确。
+ *
+ * 刻意不做"包含匹配"：{@code 平均红细胞血红蛋白} 含 {@code 血红蛋白}，
+ * 但它是完全不同的指标（MCH），按包含规则会被错归到血红蛋白，
+ * 把一条血红蛋白变成三条。宁可落进 unmatched 让人工确认，也不要错配。
  */
 @Component
 public class IndicatorMatcher {
@@ -18,49 +22,22 @@ public class IndicatorMatcher {
     }
 
     public Match match(String rawName, List<ExamIndicator> pool) {
-        if (rawName == null || rawName.isBlank() || pool == null || pool.isEmpty()) {
-            return null;
-        }
         String raw = normalize(rawName);
-        if (raw.isEmpty()) {
+        if (raw.isEmpty() || pool == null || pool.isEmpty()) {
             return null;
         }
 
-        Match best = null;
         for (ExamIndicator indicator : pool) {
-            double score = score(raw, indicator);
-            if (score > 0 && (best == null || score > best.confidence())) {
-                best = new Match(indicator, typeOf(score), score);
+            if (raw.equals(normalize(indicator.getName()))) {
+                return new Match(indicator, "exact", 1.0);
             }
         }
-        return best;
-    }
-
-    private double score(String raw, ExamIndicator indicator) {
-        String name = normalize(indicator.getName());
-        if (!name.isEmpty() && raw.equals(name)) {
-            return 1.0;
-        }
-        for (String alias : aliasesOf(indicator)) {
-            if (alias.equals(raw)) {
-                return 0.95;
+        for (ExamIndicator indicator : pool) {
+            if (aliasesOf(indicator).contains(raw)) {
+                return new Match(indicator, "alias", 0.95);
             }
         }
-        if (raw.length() >= 2 && name.length() >= 2) {
-            if (raw.contains(name)) {
-                return Math.max(0.55, 0.85 - 0.05 * (raw.length() - name.length()));
-            }
-            if (name.contains(raw)) {
-                return Math.max(0.55, 0.75 - 0.05 * (name.length() - raw.length()));
-            }
-        }
-        return 0;
-    }
-
-    private String typeOf(double score) {
-        if (score >= 0.99) return "exact";
-        if (score >= 0.9) return "alias";
-        return "contains";
+        return null;
     }
 
     private List<String> aliasesOf(ExamIndicator indicator) {
@@ -73,13 +50,19 @@ public class IndicatorMatcher {
                 .toList();
     }
 
-    /** 去空格、全角转半角、统一大写；中文不受影响 */
+    /**
+     * 去空格、全角转半角、统一大写，并去掉括号内容：
+     * {@code 血小板计数(PLT)} → {@code 血小板计数}，{@code 血红蛋白[g/L]} → {@code 血红蛋白}。
+     */
     public static String normalize(String s) {
         if (s == null) return "";
-        return s.replace("\u3000", "")
+        String t = s.replace("\u3000", "")
                 .replaceAll("\\s+", "")
                 .replace('（', '(').replace('）', ')')
                 .replace('％', '%').replace('：', ':')
                 .toUpperCase();
+        t = t.replaceAll("\\([^)]*\\)", "");
+        t = t.replaceAll("\\[[^]]*]", "");
+        return t;
     }
 }
