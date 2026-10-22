@@ -11,11 +11,17 @@
             :disabled="!trendable.length"
           >
             <el-option
-              v-for="item in trendable" :key="item.indicatorId"
+              v-for="item in visibleTrendable" :key="item.indicatorId"
               :label="`${item.indicatorName} (${item.unit} · ${item.recordCount}次)`"
               :value="item.indicatorId"
             />
           </el-select>
+          <el-checkbox v-model="onlyFocused" style="margin-left:16px" @change="onFocusFilterChange">
+            只看关注指标
+          </el-checkbox>
+          <span v-if="onlyFocused && !visibleTrendable.length" class="focus-empty">
+            还没有关注的指标，去录入页点亮 ★
+          </span>
         </el-form-item>
       </div>
 
@@ -58,14 +64,32 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { trendApi } from '@/api/trend'
+import { focusApi } from '@/api/focus'
 import TrendChart from '@/components/TrendChart.vue'
 
 const trendable = ref([])
 const trendData = ref(null)
 const selectedId = ref(null)
 const loading = ref(true)
+const onlyFocused = ref(false)
+const focusIds = ref(new Set())
+
+const visibleTrendable = computed(() =>
+  onlyFocused.value
+    ? trendable.value.filter(t => focusIds.value.has(t.indicatorId))
+    : trendable.value
+)
+
+function onFocusFilterChange() {
+  const list = visibleTrendable.value
+  if (!list.some(t => t.indicatorId === selectedId.value)) {
+    selectedId.value = list.length ? list[0].indicatorId : null
+    trendData.value = null
+    if (selectedId.value) loadTrend()
+  }
+}
 
 function rangeText(row) {
   const ind = trendData.value?.indicator || {}
@@ -91,6 +115,10 @@ async function loadTrend() {
 
 onMounted(async () => {
   try {
+    const focusRes = await focusApi.list()
+    focusIds.value = new Set((focusRes.data || []).map(i => i.id))
+  } catch (e) { console.error(e) }
+  try {
     const res = await trendApi.getTrendable()
     trendable.value = res.data
     if (res.data.length) {
@@ -103,6 +131,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.focus-empty { font-size: 12px; color: #909399; margin-left: 8px; }
 .chart-hint {
   color: var(--text-hint, #999);
   font-size: 12px;

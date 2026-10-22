@@ -52,13 +52,42 @@
     </el-card>
 
     <!-- Indicators -->
-    <el-card v-if="activeIndicators.length" header="检查指标" style="margin-top:16px">
-      <IndicatorInput
-        v-for="ind in activeIndicators" :key="ind.id"
-        :indicator="ind"
-        :model-value="valueMap[ind.id]"
-        @update:model-value="v => valueMap[ind.id] = v"
-      />
+    <el-card v-if="activeIndicators.length" style="margin-top:16px">
+      <template #header>
+        <div class="ind-header">
+          <span>检查指标</span>
+          <span class="ind-hint">点亮 ★ 长期关注，下次默认展开</span>
+        </div>
+      </template>
+
+      <template v-if="focusedIndicators.length">
+        <div class="group-title">我关注的</div>
+        <div v-for="ind in focusedIndicators" :key="ind.id" class="ind-row">
+          <span class="star on" title="取消关注" @click="toggleFocus(ind.id)">★</span>
+          <IndicatorInput
+            class="grow"
+            :indicator="ind"
+            :model-value="valueMap[ind.id]"
+            @update:model-value="v => valueMap[ind.id] = v"
+          />
+        </div>
+      </template>
+
+      <div v-if="otherIndicators.length" class="group-title clickable" @click="showOthers = !showOthers">
+        其他指标 ({{ otherIndicators.length }}) {{ showOthers ? '收起 ▲' : '展开 ▼' }}
+      </div>
+
+      <template v-if="showOthers">
+        <div v-for="ind in otherIndicators" :key="ind.id" class="ind-row">
+          <span class="star" title="加入关注" @click="toggleFocus(ind.id)">☆</span>
+          <IndicatorInput
+            class="grow"
+            :indicator="ind"
+            :model-value="valueMap[ind.id]"
+            @update:model-value="v => valueMap[ind.id] = v"
+          />
+        </div>
+      </template>
     </el-card>
 
     <!-- Upload -->
@@ -117,6 +146,7 @@ import { categoryApi } from '@/api/category'
 import { recordApi } from '@/api/record'
 import { fileApi } from '@/api/file'
 import { parseApi } from '@/api/parse'
+import { focusApi } from '@/api/focus'
 import { ElMessage } from 'element-plus'
 import IndicatorInput from '@/components/IndicatorInput.vue'
 import ExtractReviewDialog from '@/components/ExtractReviewDialog.vue'
@@ -142,6 +172,11 @@ const valueMap = reactive({})
 const uploadedUrl = ref('')
 const fileList = ref([])
 const parsing = ref(false)
+const focusIds = ref(new Set())
+const showOthers = ref(false)
+
+const focusedIndicators = computed(() => activeIndicators.value.filter(i => focusIds.value.has(i.id)))
+const otherIndicators = computed(() => activeIndicators.value.filter(i => !focusIds.value.has(i.id)))
 const reviewVisible = ref(false)
 const extractResult = ref(null)
 
@@ -192,6 +227,27 @@ function applyExtraction(items) {
   ElMessage.success(`已填入 ${items.length} 项，请核对后保存`)
 }
 
+async function loadFocus() {
+  try {
+    const res = await focusApi.list()
+    focusIds.value = new Set((res.data || []).map(i => i.id))
+  } catch (e) { console.error(e) }
+}
+
+async function toggleFocus(indicatorId) {
+  const has = focusIds.value.has(indicatorId)
+  try {
+    await (has ? focusApi.remove(indicatorId) : focusApi.add(indicatorId))
+    const next = new Set(focusIds.value)
+    if (has) next.delete(indicatorId)
+    else next.add(indicatorId)
+    focusIds.value = next
+    if (!has) showOthers.value = false
+  } catch (e) {
+    ElMessage.error(e.message || '操作失败')
+  }
+}
+
 function toDateTime(date) {
   return /^\d{4}-\d{2}-\d{2}$/.test(date) ? `${date}T00:00` : date
 }
@@ -216,6 +272,7 @@ async function handleSave() {
 }
 
 onMounted(async () => {
+  loadFocus()
   try {
     const res = await categoryApi.list()
     categories.value = res.data
@@ -253,3 +310,14 @@ onMounted(async () => {
   loading.value = false
 })
 </script>
+
+<style scoped>
+.ind-header { display: flex; align-items: center; justify-content: space-between; }
+.ind-hint { font-size: 12px; color: #909399; font-weight: 400; }
+.group-title { font-size: 13px; color: #606266; font-weight: 600; margin: 8px 0 4px; }
+.group-title.clickable { cursor: pointer; color: #909399; font-weight: 400; }
+.ind-row { display: flex; align-items: center; gap: 6px; }
+.grow { flex: 1; min-width: 0; }
+.star { cursor: pointer; font-size: 16px; color: #c0c4cc; width: 20px; text-align: center; user-select: none; }
+.star.on { color: #f5a623; }
+</style>

@@ -213,6 +213,18 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
 
 ---
 
+## 四之二、关注指标
+
+用户把自己长期关心的指标标星，录入页默认展开、趋势页可一键过滤。
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/focus-indicators` | 我关注的指标（返回指标详情数组） |
+| POST | `/api/focus-indicators/{indicatorId}` | 关注（幂等，重复调用不报错） |
+| DELETE | `/api/focus-indicators/{indicatorId}` | 取消关注 |
+
+---
+
 ## 五、检查记录
 
 记录直接挂在用户上，无需传 `userId`，服务端从 Token 取。
@@ -466,6 +478,9 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
 | POST | `/api/reference-ranges` | 新增规则 | 是 |
 | PUT | `/api/reference-ranges/{id}` | 更新规则 | 是 |
 | DELETE | `/api/reference-ranges/{id}` | 删除规则 | 是 |
+| GET | `/api/focus-indicators` | 我关注的指标 | 是 |
+| POST | `/api/focus-indicators/{indicatorId}` | 关注指标 | 是 |
+| DELETE | `/api/focus-indicators/{indicatorId}` | 取消关注 | 是 |
 | GET | `/api/records` | 记录列表 | 是 |
 | GET | `/api/records/{id}` | 记录详情 | 是 |
 | POST | `/api/records` | 新增记录 | 是 |

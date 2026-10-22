@@ -147,6 +147,22 @@ CREATE TABLE `reference_range` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='参考区间规则表';
 
 -- ============================================================
+-- 9. 用户关注指标表
+--    长期关注的指标，录入页与趋势页优先展示
+-- ============================================================
+DROP TABLE IF EXISTS user_indicator_focus;
+CREATE TABLE user_indicator_focus (
+    id           BIGINT   NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    user_id      BIGINT   NOT NULL COMMENT '用户ID',
+    indicator_id INT      NOT NULL COMMENT '指标ID',
+    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (id),
+    UNIQUE KEY uk_user_indicator (user_id, indicator_id),
+    CONSTRAINT fk_focus_user FOREIGN KEY (user_id) REFERENCES user (id) ON DELETE CASCADE,
+    CONSTRAINT fk_focus_indicator FOREIGN KEY (indicator_id) REFERENCES exam_indicator (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户关注的指标';
+
+-- ============================================================
 -- 8. 上传文件归属表
 --    报告图片按上传者鉴权访问, 不走公开静态目录
 -- ============================================================

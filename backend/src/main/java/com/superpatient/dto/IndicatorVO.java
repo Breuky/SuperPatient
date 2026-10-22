@@ -6,9 +6,11 @@ import java.math.BigDecimal;
 @Data
 public class IndicatorVO {
     private Integer id;
+    private Integer categoryId;
     private String name;
     private String unit;
     private String valueType;
     private BigDecimal normalMin;
     private BigDecimal normalMax;
+    private Integer sortOrder;
 }
