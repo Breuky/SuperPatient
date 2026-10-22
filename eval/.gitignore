@@ -1,7 +1,8 @@
 # 真实化验单与标注含个人健康信息，禁止入库
 samples/
 labels/
-raw/
-raw_summary.md
-raw2/
 report.md
+
+# 各轮抽取的原始结果，同样含具体数值
+raw*/
+raw_summary.md
