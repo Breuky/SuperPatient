@@ -35,6 +35,8 @@ public class ReportExtractionService {
     private static final Pattern FILE_URL = Pattern.compile("/api/files/(\\d+)");
     private static final Pattern RANGE = Pattern.compile("^(-?\\d+(?:\\.\\d+)?)\\s*[-~～—]\\s*(-?\\d+(?:\\.\\d+)?)$");
     private static final BigDecimal MAX_REASONABLE = new BigDecimal("1000000");
+    /** 有些医院模板把单位和数值挤在一个字段里，如 "6 10^9/L" */
+    private static final Pattern VALUE_WITH_UNIT = Pattern.compile("^(-?\\d+(?:\\.\\d+)?)\\s*(\\S.*)$");
 
     private final FileService fileService;
     private final IndicatorMapper indicatorMapper;
@@ -130,12 +132,27 @@ public class ReportExtractionService {
         c.setConfidence(match.confidence());
 
         BigDecimal value = parseNumber(rawValue);
+        String unitText = rawUnit;
+
+        // 数值解析不出来时，尝试从 "167 g/L" 这类写法里拆出数值（单位单独有值时保留原单位）
+        if (value == null && rawValue != null) {
+            Matcher vm = VALUE_WITH_UNIT.matcher(rawValue.trim());
+            if (vm.matches()) {
+                value = new BigDecimal(vm.group(1));
+                String unitFromValue = vm.group(2).trim();
+                if (rawUnit == null || rawUnit.isBlank()) {
+                    unitText = unitFromValue;
+                    c.setRawUnit(unitFromValue);
+                }
+            }
+        }
+
         BigDecimal[] range = resolveRange(item, indicator, ctx);
 
         if (value == null) {
             c.setValueText(rawValue);
         } else {
-            UnitNormalizer.Result unit = UnitNormalizer.normalize(rawUnit, indicator.getUnit());
+            UnitNormalizer.Result unit = UnitNormalizer.normalize(unitText, indicator.getUnit());
             if (unit.converted()) {
                 // 数值和参考区间必须一起换算，否则异常判定会错位
                 value = value.multiply(unit.factor());

@@ -67,10 +67,21 @@ def close_enough(a, b):
     return abs(a - b) <= max(abs(b) * 0.005, 1e-6)
 
 
+def read_text(path):
+    """Excel 另存后可能是 GBK，这里做一次兜底解码。"""
+    data = io.open(path, "rb").read()
+    for enc in ("utf-8-sig", "gbk", "utf-8"):
+        try:
+            return data.decode(enc)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("utf-8", errors="replace")
+
+
 def load_labels(path):
     rows = []
-    with io.open(path, encoding="utf-8-sig") as f:
-        for r in csv.DictReader(f):
+    if True:
+        for r in csv.DictReader(io.StringIO(read_text(path))):
             if not r.get("name") or not (r.get("value") or "").strip():
                 continue
             rows.append({
@@ -109,6 +120,9 @@ def load_raw(path):
 def evaluate(labels, candidates):
     by_name = {}
     for c in candidates:
+        # 没有值的行（分组标题、模型漏读）不算"抽到"
+        if c["value"] is None or str(c["value"]).strip() == "":
+            continue
         by_name.setdefault(norm_name(c["rawName"]), []).append(c)
 
     stats = {"labels": len(labels), "matched": 0, "value_ok": 0,
@@ -146,7 +160,8 @@ def evaluate(labels, candidates):
         if cand["indicatorId"] is not None:
             stats["normalized"] += 1
 
-    stats["fp"] = sum(1 for c in candidates if id(c) not in used)
+    stats["fp"] = sum(1 for c in candidates
+                     if id(c) not in used and c["value"] is not None and str(c["value"]).strip() != "")
     return stats, missing, wrong_value, wrong_unit
 
 
