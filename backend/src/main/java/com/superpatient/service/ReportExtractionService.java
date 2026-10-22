@@ -94,6 +94,12 @@ public class ReportExtractionService {
             String rawValue = text(item, "value");
             String rawUnit = text(item, "unit");
 
+            // 报告里的分组标题（如"白细胞""红细胞"）没有值，不是测量项，直接跳过
+            if (parseNumber(rawValue) == null && (rawValue == null || rawValue.isBlank())) {
+                log.debug("跳过无值行: {}", rawName);
+                continue;
+            }
+
             IndicatorMatcher.Match match = indicatorMatcher.match(rawName, pool);
             if (match == null) {
                 ExtractResultVO.Unmatched unmatched = new ExtractResultVO.Unmatched();
