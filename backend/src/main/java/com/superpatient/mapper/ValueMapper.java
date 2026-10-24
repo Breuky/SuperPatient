@@ -16,4 +16,7 @@ public interface ValueMapper {
                                                    @Param("startDate") String startDate,
                                                    @Param("endDate") String endDate);
     int countDistinctIndicatorsByUserId(@Param("userId") Long userId);
+
+    /** 当前用户有数值记录的指标（不看启用状态，指标被禁用后历史趋势仍要能查） */
+    List<com.superpatient.dto.TrendableIndicatorVO> findTrendableIndicators(@Param("userId") Long userId);
 }

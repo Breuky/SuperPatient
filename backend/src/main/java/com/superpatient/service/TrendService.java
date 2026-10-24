@@ -64,25 +64,11 @@ public class TrendService {
         return vo;
     }
 
+    /**
+     * 以「有数值记录」为准，而不是「当前启用」：指标被禁用或从公共库摘掉后，
+     * 用户的历史趋势仍然要能打开。
+     */
     public List<TrendableIndicatorVO> getTrendableIndicators(Long userId) {
-        List<ExamIndicator> allNumeric = indicatorMapper.findAllEnabled(userId).stream()
-                .filter(i -> "number".equals(i.getValueType()))
-                .toList();
-
-        List<TrendableIndicatorVO> result = new ArrayList<>();
-        for (ExamIndicator ind : allNumeric) {
-            List<ExamValue> values = valueMapper.findByUserIdAndIndicatorId(
-                    userId, ind.getId(), null, null);
-            if (!values.isEmpty()) {
-                TrendableIndicatorVO vo = new TrendableIndicatorVO();
-                vo.setIndicatorId(ind.getId());
-                vo.setIndicatorName(ind.getName());
-                vo.setUnit(ind.getUnit());
-                vo.setCategoryId(ind.getCategoryId());
-                vo.setRecordCount(values.size());
-                result.add(vo);
-            }
-        }
-        return result;
+        return valueMapper.findTrendableIndicators(userId);
     }
 }

@@ -53,12 +53,33 @@
         ORDER BY r.exam_date ASC
     </select>
 
+    <!-- 指标被禁用只影响「以后还能不能选」，已经录过的数据要照常统计和画图 -->
     <select id="countDistinctIndicatorsByUserId" resultType="int">
         SELECT COUNT(DISTINCT v.indicator_id)
         FROM exam_value v
         JOIN exam_record r ON v.record_id = r.id
         JOIN exam_indicator i ON v.indicator_id = i.id
-        WHERE r.user_id = #{userId} AND i.status = 1
+        WHERE r.user_id = #{userId}
+          AND (i.owner_id = 0 OR i.owner_id = #{userId})
+    </select>
+
+    <select id="findTrendableIndicators" resultType="com.superpatient.dto.TrendableIndicatorVO">
+        SELECT i.id            AS indicatorId,
+               i.name          AS indicatorName,
+               i.unit          AS unit,
+               i.category_id   AS categoryId,
+               c.name          AS categoryName,
+               COUNT(v.id)     AS recordCount
+        FROM exam_value v
+        JOIN exam_record r    ON r.id = v.record_id
+        JOIN exam_indicator i ON i.id = v.indicator_id
+        LEFT JOIN exam_category c ON c.id = i.category_id
+        WHERE r.user_id = #{userId}
+          AND v.value_decimal IS NOT NULL
+          AND i.value_type = 'number'
+          AND (i.owner_id = 0 OR i.owner_id = #{userId})
+        GROUP BY i.id, i.name, i.unit, i.category_id, c.name, i.sort_order
+        ORDER BY i.category_id ASC, i.sort_order ASC
     </select>
 
 </mapper>
