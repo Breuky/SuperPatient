@@ -57,6 +57,7 @@ DROP TABLE IF EXISTS `exam_indicator`;
 CREATE TABLE `exam_indicator` (
     `id`           INT            NOT NULL AUTO_INCREMENT COMMENT '主键ID',
     `category_id`  INT            NOT NULL COMMENT '所属分类ID (关联exam_category.id)',
+    `owner_id`     INT            NOT NULL DEFAULT 0 COMMENT '归属: 0=系统公共, 其他=用户ID (私有指标)',
     `name`         VARCHAR(100)   NOT NULL COMMENT '指标名称 (如: 血红蛋白、白细胞计数)',
     `aliases`      VARCHAR(255)   DEFAULT NULL COMMENT '别名, 逗号分隔 (用于抽取归一)',
     `unit`         VARCHAR(20)    DEFAULT NULL COMMENT '单位 (如: g/L、10^9/L、mm)',
@@ -67,6 +68,7 @@ CREATE TABLE `exam_indicator` (
     `status`       TINYINT        DEFAULT 1 COMMENT '状态: 1=启用 0=禁用 (软删除)',
     `created_at`   DATETIME       DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_owner_name` (`owner_id`, `category_id`, `name`),
     KEY `idx_category_id` (`category_id`),
     CONSTRAINT `fk_indicator_category` FOREIGN KEY (`category_id`) REFERENCES `exam_category` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='检查指标定义表';

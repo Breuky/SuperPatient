@@ -5,6 +5,7 @@ import com.superpatient.dto.ValueItem;
 import com.superpatient.entity.ExamIndicator;
 import com.superpatient.entity.ExamValue;
 import com.superpatient.entity.User;
+import com.superpatient.exception.BusinessException;
 import com.superpatient.mapper.CategoryMapper;
 import com.superpatient.mapper.IndicatorMapper;
 import com.superpatient.mapper.RecordMapper;
@@ -24,6 +25,8 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -103,6 +106,17 @@ class RecordServiceTest {
                 ArgumentCaptor.forClass(com.superpatient.entity.ExamRecord.class);
         verify(recordMapper).insert(captor.capture());
         assertEquals(1L, captor.getValue().getUserId(), "记录直接挂在当前登录用户上");
+    }
+
+    @Test
+    void rejectsValueForAnotherUsersPrivateIndicator() {
+        ExamIndicator foreign = indicator(9, "4", "10");
+        foreign.setOwnerId(999L);
+        when(indicatorMapper.findById(9)).thenReturn(foreign);
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> recordService.create(request(item(9, "6.8"))));
+        assertTrue(e.getMessage().contains("无权"));
     }
 
     private List<ExamValue> capturedValues() {

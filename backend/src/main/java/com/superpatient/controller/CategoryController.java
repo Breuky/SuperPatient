@@ -6,6 +6,7 @@ import com.superpatient.dto.CategoryVO;
 import com.superpatient.entity.ExamCategory;
 import com.superpatient.pojo.Result;
 import com.superpatient.service.CategoryService;
+import com.superpatient.util.CurrentHolder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +25,7 @@ public class CategoryController {
     @Operation(summary = "分类列表（含指标）", description = "仅返回启用状态的指标")
     @GetMapping
     public Result list() {
-        List<CategoryVO> list = categoryService.listWithIndicators();
+        List<CategoryVO> list = categoryService.listWithIndicators(CurrentHolder.getCurrentId());
         return Result.success(list);
     }
 

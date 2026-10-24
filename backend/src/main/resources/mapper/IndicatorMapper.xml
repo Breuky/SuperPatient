@@ -5,6 +5,7 @@
     <resultMap id="baseMap" type="com.superpatient.entity.ExamIndicator">
         <id column="id" property="id"/>
         <result column="category_id" property="categoryId"/>
+        <result column="owner_id" property="ownerId"/>
         <result column="name" property="name"/>
         <result column="aliases" property="aliases"/>
         <result column="unit" property="unit"/>
@@ -16,14 +17,19 @@
         <result column="created_at" property="createdAt"/>
     </resultMap>
 
-    <select id="findByCategoryId" resultMap="baseMap">
+    <!-- 可见性谓词：公共指标 (owner_id = 0) + 当前用户私有。所有指标查询都必须带上，漏一处就是越权 -->
+    <sql id="visible">
+        status = 1 AND (owner_id = 0 OR owner_id = #{userId})
+    </sql>
+
+    <select id="findVisibleByCategory" resultMap="baseMap">
         SELECT * FROM exam_indicator
-        WHERE category_id = #{categoryId} AND status = 1
+        WHERE category_id = #{categoryId} AND <include refid="visible"/>
         ORDER BY sort_order ASC
     </select>
 
     <select id="findAllEnabled" resultMap="baseMap">
-        SELECT * FROM exam_indicator WHERE status = 1 ORDER BY sort_order ASC
+        SELECT * FROM exam_indicator WHERE <include refid="visible"/> ORDER BY sort_order ASC
     </select>
 
     <select id="findById" resultMap="baseMap">
@@ -31,8 +37,8 @@
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO exam_indicator (category_id, name, aliases, unit, value_type, normal_min, normal_max, sort_order, status)
-        VALUES (#{categoryId}, #{name}, #{aliases}, #{unit}, #{valueType}, #{normalMin}, #{normalMax}, #{sortOrder}, 1)
+        INSERT INTO exam_indicator (category_id, owner_id, name, aliases, unit, value_type, normal_min, normal_max, sort_order, status)
+        VALUES (#{categoryId}, #{ownerId}, #{name}, #{aliases}, #{unit}, #{valueType}, #{normalMin}, #{normalMax}, #{sortOrder}, 1)
     </insert>
 
     <update id="update">

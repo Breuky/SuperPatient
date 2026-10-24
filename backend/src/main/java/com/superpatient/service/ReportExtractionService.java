@@ -63,7 +63,7 @@ public class ReportExtractionService {
             throw new BusinessException("读取图片失败: " + e.getMessage());
         }
 
-        List<ExamIndicator> pool = indicatorMapper.findByCategoryId(categoryId);
+        List<ExamIndicator> pool = indicatorMapper.findVisibleByCategory(categoryId, CurrentHolder.getCurrentId());
         ReferenceRangeService.UserContext ctx = ReferenceRangeService.UserContext.of(
                 userMapper.findById(CurrentHolder.getCurrentId()));
         String prompt = ExtractionPrompt.build(pool);

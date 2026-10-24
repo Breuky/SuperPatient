@@ -25,7 +25,8 @@ public class TrendService {
 
     public TrendVO getTrends(Long userId, Integer indicatorId, String startDate, String endDate) {
         ExamIndicator ind = indicatorMapper.findById(indicatorId);
-        if (ind == null) return null;
+        // 别人的私有指标当作不存在，避免拿到别人的指标名与参考区间
+        if (ind == null || !ind.isVisibleTo(userId)) return null;
 
         List<ExamValue> values = valueMapper.findByUserIdAndIndicatorId(
                 userId, indicatorId, startDate, endDate);
@@ -64,7 +65,7 @@ public class TrendService {
     }
 
     public List<TrendableIndicatorVO> getTrendableIndicators(Long userId) {
-        List<ExamIndicator> allNumeric = indicatorMapper.findAllEnabled().stream()
+        List<ExamIndicator> allNumeric = indicatorMapper.findAllEnabled(userId).stream()
                 .filter(i -> "number".equals(i.getValueType()))
                 .toList();
 

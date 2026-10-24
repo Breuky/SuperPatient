@@ -122,7 +122,7 @@ public class RecordService {
 
         ReferenceRangeService.UserContext ctx = ReferenceRangeService.UserContext.of(
                 userMapper.findById(userId));
-        List<ExamValue> values = buildValues(record.getId(), request.getValues(), ctx);
+        List<ExamValue> values = buildValues(record.getId(), request.getValues(), ctx, userId);
         if (!values.isEmpty()) {
             valueMapper.batchInsert(values);
         }
@@ -173,7 +173,7 @@ public class RecordService {
             valueMapper.deleteByRecordId(id);
             ReferenceRangeService.UserContext ctx = ReferenceRangeService.UserContext.of(
                     userMapper.findById(existing.getUserId()));
-            List<ExamValue> values = buildValues(id, request.getValues(), ctx);
+            List<ExamValue> values = buildValues(id, request.getValues(), ctx, existing.getUserId());
             if (!values.isEmpty()) {
                 valueMapper.batchInsert(values);
             }
@@ -199,13 +199,17 @@ public class RecordService {
     }
 
     private List<ExamValue> buildValues(Long recordId, List<ValueItem> items,
-                                        ReferenceRangeService.UserContext ctx) {
+                                        ReferenceRangeService.UserContext ctx, Long userId) {
         List<ExamValue> values = new ArrayList<>();
         if (items == null) return values;
 
         for (ValueItem item : items) {
             ExamIndicator ind = indicatorMapper.findById(item.getIndicatorId());
             if (ind == null) continue;
+            // 私有指标只能挂到 owner 自己的记录上，否则拒绝整条请求
+            if (!ind.isVisibleTo(userId)) {
+                throw new BusinessException("指标不存在或无权使用: " + item.getIndicatorId());
+            }
 
             ExamValue v = new ExamValue();
             v.setRecordId(recordId);

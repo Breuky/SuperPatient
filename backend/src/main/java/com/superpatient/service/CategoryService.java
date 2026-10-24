@@ -24,9 +24,9 @@ public class CategoryService {
     private final CategoryMapper categoryMapper;
     private final IndicatorMapper indicatorMapper;
 
-    public List<CategoryVO> listWithIndicators() {
+    public List<CategoryVO> listWithIndicators(Long userId) {
         List<ExamCategory> categories = categoryMapper.findAll();
-        List<ExamIndicator> allIndicators = indicatorMapper.findAllEnabled();
+        List<ExamIndicator> allIndicators = indicatorMapper.findAllEnabled(userId);
 
         Map<Integer, List<ExamIndicator>> indicatorMap = allIndicators.stream()
                 .collect(Collectors.groupingBy(ExamIndicator::getCategoryId));

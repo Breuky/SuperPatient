@@ -8,8 +8,14 @@ import java.util.List;
 
 @Mapper
 public interface IndicatorMapper {
-    List<ExamIndicator> findByCategoryId(@Param("categoryId") Integer categoryId);
-    List<ExamIndicator> findAllEnabled();
+    /** 当前用户可见的指标：公共 + 自己的私有 */
+    List<ExamIndicator> findVisibleByCategory(@Param("categoryId") Integer categoryId,
+                                              @Param("userId") Long userId);
+
+    /** 当前用户可见的全部启用指标 */
+    List<ExamIndicator> findAllEnabled(@Param("userId") Long userId);
+
+    /** 不带归属过滤，仅用于渲染历史数据（值已经落在库里了，指标被禁用也要能显示名字） */
     ExamIndicator findById(@Param("id") Integer id);
     int insert(ExamIndicator indicator);
     int update(ExamIndicator indicator);

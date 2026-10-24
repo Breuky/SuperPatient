@@ -123,7 +123,7 @@ class ReportExtractionServiceTest {
     private void stubImageAndPool() throws Exception {
         when(fileService.load(anyLong()))
                 .thenReturn(new FileService.FileContent(new ByteArrayResource(new byte[]{1, 2, 3}), "image/png"));
-        when(indicatorMapper.findByCategoryId(anyInt())).thenReturn(List.of(
+        when(indicatorMapper.findVisibleByCategory(anyInt(), any())).thenReturn(List.of(
                 indicator(1, "血红蛋白", "HGB,Hb", "g/L", "120", "160"),
                 indicator(2, "白细胞计数", "WBC", "10^9/L", "4", "10"),
                 indicator(3, "葡萄糖", "GLU", "mmol/L", "3.9", "6.1")

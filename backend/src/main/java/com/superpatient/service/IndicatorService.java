@@ -4,6 +4,7 @@ import com.superpatient.dto.IndicatorCreateRequest;
 import com.superpatient.dto.IndicatorDetailVO;
 import com.superpatient.dto.IndicatorUpdateRequest;
 import com.superpatient.entity.ExamIndicator;
+import com.superpatient.exception.BusinessException;
 import com.superpatient.mapper.IndicatorMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -18,12 +19,12 @@ public class IndicatorService {
 
     private final IndicatorMapper indicatorMapper;
 
-    public List<IndicatorDetailVO> list(Integer categoryId) {
+    public List<IndicatorDetailVO> list(Integer categoryId, Long userId) {
         List<ExamIndicator> indicators;
         if (categoryId != null) {
-            indicators = indicatorMapper.findByCategoryId(categoryId);
+            indicators = indicatorMapper.findVisibleByCategory(categoryId, userId);
         } else {
-            indicators = indicatorMapper.findAllEnabled();
+            indicators = indicatorMapper.findAllEnabled(userId);
         }
         return indicators.stream().map(this::toVO).collect(Collectors.toList());
     }
@@ -32,6 +33,8 @@ public class IndicatorService {
     public IndicatorDetailVO create(IndicatorCreateRequest request) {
         ExamIndicator indicator = new ExamIndicator();
         indicator.setCategoryId(request.getCategoryId());
+        // 第 1 步只做结构：新增仍写公共库，待指标管理页区分「公共/我的」后再改成归属当前用户
+        indicator.setOwnerId(ExamIndicator.SYSTEM_OWNER);
         indicator.setName(request.getName());
         indicator.setAliases(normalizeAliases(request.getAliases()));
         indicator.setUnit(request.getUnit());
@@ -44,7 +47,8 @@ public class IndicatorService {
     }
 
     @Transactional
-    public boolean update(Integer id, IndicatorUpdateRequest request) {
+    public boolean update(Integer id, IndicatorUpdateRequest request, Long userId) {
+        requireWritable(id, userId);
         ExamIndicator indicator = new ExamIndicator();
         indicator.setId(id);
         indicator.setCategoryId(request.getCategoryId());
@@ -60,16 +64,31 @@ public class IndicatorService {
     }
 
     @Transactional
-    public boolean updateStatus(Integer id, Integer status) {
+    public boolean updateStatus(Integer id, Integer status, Long userId) {
+        requireWritable(id, userId);
         return indicatorMapper.updateStatus(id, status) > 0;
     }
 
     @Transactional
-    public boolean delete(Integer id) {
+    public boolean delete(Integer id, Long userId) {
+        requireWritable(id, userId);
         if (indicatorMapper.existsValuesByIndicatorId(id)) {
             throw new RuntimeException("该指标已有历史数据，无法删除，请先禁用");
         }
         return indicatorMapper.deleteById(id) > 0;
+    }
+
+    /**
+     * 只有公共指标和本人私有指标可维护。别人的私有指标一律当作不存在，避免探测。
+     */
+    private void requireWritable(Integer id, Long userId) {
+        ExamIndicator existing = indicatorMapper.findById(id);
+        Long owner = existing == null || existing.getOwnerId() == null
+                ? ExamIndicator.SYSTEM_OWNER
+                : existing.getOwnerId();
+        if (existing == null || (owner != ExamIndicator.SYSTEM_OWNER && !owner.equals(userId))) {
+            throw new BusinessException("指标不存在或无权修改");
+        }
     }
 
     /**
@@ -98,6 +117,7 @@ public class IndicatorService {
         IndicatorDetailVO vo = new IndicatorDetailVO();
         vo.setId(ind.getId());
         vo.setCategoryId(ind.getCategoryId());
+        vo.setOwnerId(ind.getOwnerId() == null ? ExamIndicator.SYSTEM_OWNER : ind.getOwnerId());
         vo.setName(ind.getName());
         vo.setAliases(ind.getAliases());
         vo.setUnit(ind.getUnit());

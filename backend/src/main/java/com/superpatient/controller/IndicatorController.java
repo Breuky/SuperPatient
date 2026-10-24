@@ -6,6 +6,7 @@ import com.superpatient.dto.IndicatorStatusRequest;
 import com.superpatient.dto.IndicatorUpdateRequest;
 import com.superpatient.pojo.Result;
 import com.superpatient.service.IndicatorService;
+import com.superpatient.util.CurrentHolder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,7 +26,7 @@ public class IndicatorController {
     @Operation(summary = "指标列表", description = "默认仅返回启用状态的指标")
     @GetMapping
     public Result list(@Parameter(description = "按分类筛选") @RequestParam(required = false) Integer categoryId) {
-        List<IndicatorDetailVO> list = indicatorService.list(categoryId);
+        List<IndicatorDetailVO> list = indicatorService.list(categoryId, CurrentHolder.getCurrentId());
         return Result.success(list);
     }
 
@@ -39,7 +40,7 @@ public class IndicatorController {
     @Operation(summary = "更新指标")
     @PutMapping("/{id}")
     public Result update(@PathVariable Integer id, @RequestBody IndicatorUpdateRequest request) {
-        boolean updated = indicatorService.update(id, request);
+        boolean updated = indicatorService.update(id, request, CurrentHolder.getCurrentId());
         if (!updated) return Result.error("指标不存在");
         return Result.success(null);
     }
@@ -47,7 +48,7 @@ public class IndicatorController {
     @Operation(summary = "禁用/启用指标", description = "软删除：将 status 设为 0（禁用）或 1（启用）")
     @PutMapping("/{id}/status")
     public Result updateStatus(@PathVariable Integer id, @RequestBody IndicatorStatusRequest request) {
-        boolean updated = indicatorService.updateStatus(id, request.getStatus());
+        boolean updated = indicatorService.updateStatus(id, request.getStatus(), CurrentHolder.getCurrentId());
         if (!updated) return Result.error("指标不存在");
         return Result.success(null);
     }
@@ -56,7 +57,7 @@ public class IndicatorController {
     @DeleteMapping("/{id}")
     public Result delete(@PathVariable Integer id) {
         try {
-            indicatorService.delete(id);
+            indicatorService.delete(id, CurrentHolder.getCurrentId());
         } catch (RuntimeException e) {
             return Result.error(e.getMessage());
         }

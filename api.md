@@ -143,9 +143,13 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
 
 `GET /api/indicators?categoryId={id}`
 
-`categoryId` 可选，不传返回全部启用指标。返回每项的 `id / categoryId / name / unit / valueType / normalMin / normalMax / sortOrder / status`。
+`categoryId` 可选，不传返回全部启用指标。**只返回当前用户可见的指标**：公共指标（`ownerId = 0`）加上自己的私有指标。
 
-> 别名（`aliases`）用于抽取归一，目前通过 SQL 维护，未开放编辑接口。
+返回每项的 `id / categoryId / ownerId / name / aliases / unit / valueType / normalMin / normalMax / sortOrder / status`。
+
+> `ownerId = 0` 表示系统公共指标，其他值表示该指标只对创建者可见。别名（`aliases`）用于抽取归一，逗号分隔，可在指标表单里直接编辑。
+>
+> 维护类接口会校验归属：别人的私有指标一律返回「指标不存在或无权修改」。
 
 ### 3.2 新增 / 更新 / 启停 / 删除
 
