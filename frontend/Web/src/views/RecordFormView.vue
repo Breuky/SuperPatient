@@ -91,7 +91,7 @@
     </el-card>
 
     <!-- Upload -->
-    <el-card style="margin-top:16px">
+    <el-card v-loading="uploading" element-loading-text="上传中..." style="margin-top:16px">
       <template #header>
         <div style="display:flex;align-items:center;justify-content:space-between">
           <span>报告照片 (可选)</span>
@@ -101,6 +101,7 @@
             plain
             size="small"
             :loading="parsing"
+            :disabled="uploading"
             @click="handleParse"
           >
             <el-icon><MagicStick /></el-icon>
@@ -172,6 +173,7 @@ const valueMap = reactive({})
 const uploadedUrl = ref('')
 const fileList = ref([])
 const parsing = ref(false)
+const uploading = ref(false)
 const focusIds = ref(new Set())
 const showOthers = ref(false)
 
@@ -187,10 +189,17 @@ const activeIndicators = computed(() => {
 })
 
 async function onFileChange(file) {
+  uploading.value = true
   try {
     const res = await fileApi.upload(file.raw)
     uploadedUrl.value = res.data.url
-  } catch (err) { alert('上传失败: ' + err.message) }
+    ElMessage.success('上传成功，可以点右上角「AI 识别化验单」')
+  } catch (err) {
+    uploadedUrl.value = ''
+    ElMessage.error('上传失败: ' + err.message)
+  } finally {
+    uploading.value = false
+  }
 }
 
 async function handleParse() {

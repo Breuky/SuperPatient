@@ -7,7 +7,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 
 import java.util.Base64;
@@ -44,7 +46,11 @@ public class QwenVlVisionClient implements LlmVisionClient {
         if (model.isBlank()) {
             throw new IllegalStateException("已选择 qwen 抽取，但未配置 app.llm.model");
         }
-        this.restClient = RestClient.builder().baseUrl(baseUrl).build();
+        // 模型识别一张化验单要 30-60 秒，必须显式给读超时，否则模型挂住时请求会一直悬着
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10_000);
+        factory.setReadTimeout(90_000);
+        this.restClient = RestClient.builder().baseUrl(baseUrl).requestFactory(factory).build();
         this.objectMapper = objectMapper;
         this.apiKey = apiKey;
         this.model = model;
@@ -77,6 +83,9 @@ public class QwenVlVisionClient implements LlmVisionClient {
                     .body(body)
                     .retrieve()
                     .body(String.class);
+        } catch (ResourceAccessException e) {
+            log.error("调用 Qwen-VL 超时（耗时 {}ms）", System.currentTimeMillis() - start, e);
+            throw new BusinessException("识别超时（超过 90 秒），请重试或换一张更清晰的图片");
         } catch (Exception e) {
             log.error("调用 Qwen-VL 失败（耗时 {}ms）", System.currentTimeMillis() - start, e);
             throw new BusinessException("模型调用失败，请稍后重试");
