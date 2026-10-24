@@ -209,11 +209,16 @@ async function handleParse() {
   parsing.value = true
   try {
     const res = await parseApi.report(uploadedUrl.value, form.categoryId)
-    extractResult.value = res.data
+    const data = res.data || {}
+    const n = data.candidates?.length || 0
+    const m = data.unmatched?.length || 0
+    if (!n && !m) {
+      ElMessage.warning('没有识别到指标，请检查图片是否清晰')
+      return
+    }
+    // 先落数据再开窗，避免弹窗首次渲染读不到 result
+    extractResult.value = data
     reviewVisible.value = true
-    const n = res.data.candidates?.length || 0
-    const m = res.data.unmatched?.length || 0
-    if (!n && !m) ElMessage.warning('没有识别到指标，请检查图片是否清晰')
   } catch (e) {
     ElMessage.error('识别失败: ' + e.message)
   } finally {

@@ -4,12 +4,16 @@
       type="info"
       :closable="false"
       show-icon
-      title="模型只负责抽取，保存前请逐项核对。取消勾选的项不会入库。"
+      title="模型只负责抽取，保存前请逐项核对。默认不勾选，勾选的行才会填入表单。"
       style="margin-bottom:12px"
     />
 
     <template v-if="rows.length">
-      <div class="section-title">已匹配 {{ rows.length }} 项</div>
+      <div class="section-title">
+        <span>已匹配 {{ rows.length }} 项</span>
+        <el-checkbox v-model="allChecked" :indeterminate="someChecked" size="small">全选</el-checkbox>
+        <span class="picked">已选 {{ pickedCount }} 项</span>
+      </div>
       <el-table :data="rows" size="small" border>
         <el-table-column width="46" align="center">
           <template #default="{ row }"><el-checkbox v-model="row.use" /></template>
@@ -87,7 +91,9 @@
         识别到：{{ result?.examDate || '无日期' }} · {{ result?.hospital || '无医院' }}（应用时一并填入）
       </span>
       <el-button @click="open = false">取消</el-button>
-      <el-button type="primary" @click="handleApply">应用到表单</el-button>
+      <el-button type="primary" :disabled="pickedCount === 0" @click="handleApply">
+        应用到表单{{ pickedCount ? '（' + pickedCount + ' 项）' : '' }}
+      </el-button>
     </template>
   </el-dialog>
 </template>
@@ -111,12 +117,21 @@ const open = computed({
 const rows = ref([])
 const extras = ref([])
 
+/** 只作用于「已匹配」：未匹配行还得先选对应指标，全选没有意义 */
+const allChecked = computed({
+  get: () => rows.value.length > 0 && rows.value.every(r => r.use),
+  set: (v) => rows.value.forEach(r => { r.use = v })
+})
+const someChecked = computed(() => !allChecked.value && rows.value.some(r => r.use))
+const pickedCount = computed(() =>
+  rows.value.filter(r => r.use).length + extras.value.filter(r => r.use && r.indicatorId).length)
+
 watch(() => [props.visible, props.result], () => {
   if (!props.visible) return
   const r = props.result || {}
   rows.value = (r.candidates || []).map(c => ({
     ...c,
-    use: true,
+    use: false,
     valueInput: c.valueDecimal != null ? String(c.valueDecimal) : (c.valueText || ''),
     refMin: c.refMin != null ? String(c.refMin) : '',
     refMax: c.refMax != null ? String(c.refMax) : ''
@@ -178,11 +193,15 @@ function handleApply() {
 
 <style scoped>
 .section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   font-size: 13px;
   font-weight: 600;
   color: #303133;
   margin: 14px 0 8px;
 }
+.picked { font-weight: 400; color: #909399; font-size: 12px; }
 .raw { color: #909399; font-size: 12px; }
 .warn { color: #e6a23c; font-size: 12px; }
 .range { display: flex; align-items: center; gap: 4px; }
