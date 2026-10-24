@@ -22,5 +22,11 @@ public interface IndicatorMapper {
     int updateStatus(@Param("id") Integer id, @Param("status") Integer status);
     int deleteById(@Param("id") Integer id);
     int countEnabled();
+
+    /** 同分类下是否已有同名指标（公共或本人私有），用于创建/改名时给出可读的错误 */
+    boolean existsByName(@Param("categoryId") Integer categoryId,
+                         @Param("name") String name,
+                         @Param("userId") Long userId,
+                         @Param("excludeId") Integer excludeId);
     boolean existsValuesByIndicatorId(@Param("indicatorId") Integer indicatorId);
 }

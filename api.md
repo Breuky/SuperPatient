@@ -155,10 +155,13 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/api/indicators` | 新增指标 |
-| PUT | `/api/indicators/{id}` | 更新指标 |
-| PUT | `/api/indicators/{id}/status` | 启用/禁用，body：`{ "status": 0 }` |
-| DELETE | `/api/indicators/{id}` | 物理删除，已有历史数据时会被拒绝 |
+| POST | `/api/indicators` | 新增指标，**归属当前登录用户**（私有） |
+| PUT | `/api/indicators/{id}` | 更新指标，仅限自己的 |
+| PUT | `/api/indicators/{id}/status` | 启用/禁用，body：`{ "status": 0 }`，仅限自己的 |
+| DELETE | `/api/indicators/{id}` | 物理删除，仅限自己的且无历史数据 |
+
+公共指标（`ownerId = 0`）由系统维护，以上四个接口对它的写入一律返回「指标不存在或无权修改」。
+同分类下不允许重名：新建或改名时与公共库或自己的指标撞名，返回「该分类下已有同名指标」。
 
 ---
 

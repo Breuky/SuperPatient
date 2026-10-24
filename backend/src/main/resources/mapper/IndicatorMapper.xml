@@ -65,6 +65,13 @@
         DELETE FROM exam_indicator WHERE id = #{id}
     </delete>
 
+    <select id="existsByName" resultType="boolean">
+        SELECT COUNT(*) > 0 FROM exam_indicator
+        WHERE category_id = #{categoryId} AND name = #{name} AND status = 1
+          AND (owner_id = 0 OR owner_id = #{userId})
+        <if test="excludeId != null">AND id != #{excludeId}</if>
+    </select>
+
     <select id="countEnabled" resultType="int">
         SELECT COUNT(*) FROM exam_indicator WHERE status = 1
     </select>

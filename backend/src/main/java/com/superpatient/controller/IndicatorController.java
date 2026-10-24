@@ -33,7 +33,7 @@ public class IndicatorController {
     @Operation(summary = "新增指标")
     @PostMapping
     public Result create(@RequestBody IndicatorCreateRequest request) {
-        IndicatorDetailVO vo = indicatorService.create(request);
+        IndicatorDetailVO vo = indicatorService.create(request, CurrentHolder.getCurrentId());
         return Result.success(vo);
     }
 

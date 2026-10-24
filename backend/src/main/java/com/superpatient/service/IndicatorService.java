@@ -30,11 +30,12 @@ public class IndicatorService {
     }
 
     @Transactional
-    public IndicatorDetailVO create(IndicatorCreateRequest request) {
+    public IndicatorDetailVO create(IndicatorCreateRequest request, Long userId) {
+        requireUniqueName(request.getCategoryId(), request.getName(), userId, null);
         ExamIndicator indicator = new ExamIndicator();
         indicator.setCategoryId(request.getCategoryId());
-        // 第 1 步只做结构：新增仍写公共库，待指标管理页区分「公共/我的」后再改成归属当前用户
-        indicator.setOwnerId(ExamIndicator.SYSTEM_OWNER);
+        // 新增的指标一律归属创建者：公共库只读，长尾写法由用户自己维护
+        indicator.setOwnerId(userId);
         indicator.setName(request.getName());
         indicator.setAliases(normalizeAliases(request.getAliases()));
         indicator.setUnit(request.getUnit());
@@ -49,6 +50,9 @@ public class IndicatorService {
     @Transactional
     public boolean update(Integer id, IndicatorUpdateRequest request, Long userId) {
         requireWritable(id, userId);
+        if (request.getName() != null && request.getCategoryId() != null) {
+            requireUniqueName(request.getCategoryId(), request.getName(), userId, id);
+        }
         ExamIndicator indicator = new ExamIndicator();
         indicator.setId(id);
         indicator.setCategoryId(request.getCategoryId());
@@ -79,15 +83,25 @@ public class IndicatorService {
     }
 
     /**
-     * 只有公共指标和本人私有指标可维护。别人的私有指标一律当作不存在，避免探测。
+     * 只有本人的私有指标可维护。公共指标只读，别人的私有指标一律当作不存在（避免探测存在性）。
      */
     private void requireWritable(Integer id, Long userId) {
         ExamIndicator existing = indicatorMapper.findById(id);
-        Long owner = existing == null || existing.getOwnerId() == null
-                ? ExamIndicator.SYSTEM_OWNER
-                : existing.getOwnerId();
-        if (existing == null || (owner != ExamIndicator.SYSTEM_OWNER && !owner.equals(userId))) {
+        if (existing == null || existing.getOwnerId() == null || !existing.getOwnerId().equals(userId)) {
             throw new BusinessException("指标不存在或无权修改");
+        }
+    }
+
+    /**
+     * 同分类下不允许重名，否则抽取候选池里会出现两个同名指标、结果不确定。
+     * 公共库里已有的名字，用户不能再建一条私有的——那种情况应该直接用公共指标。
+     */
+    private void requireUniqueName(Integer categoryId, String name, Long userId, Integer excludeId) {
+        if (name == null || name.isBlank()) {
+            throw new BusinessException("指标名称不能为空");
+        }
+        if (indicatorMapper.existsByName(categoryId, name.trim(), userId, excludeId)) {
+            throw new BusinessException("该分类下已有同名指标: " + name.trim());
         }
     }
 

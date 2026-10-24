@@ -4,9 +4,21 @@
       <template #header>
         <div class="card-header">
           <span>指标管理</span>
-          <el-button type="success" @click="openAdd">新增指标</el-button>
+          <el-button type="success" @click="openAdd">新增我的指标</el-button>
         </div>
       </template>
+
+      <div class="scope-bar">
+        <el-radio-group v-model="scope" size="small">
+          <el-radio-button value="mine">我的指标</el-radio-button>
+          <el-radio-button value="public">公共指标</el-radio-button>
+        </el-radio-group>
+        <span class="scope-hint">
+          {{ scope === 'mine'
+            ? '报告里有系统不认识的写法时，新增一条自己的指标，之后自动归到它'
+            : '公共指标由系统维护，只读。需要用就选它，不要重复创建' }}
+        </span>
+      </div>
 
       <el-tabs v-model="activeCatId" @tab-change="onTabChange">
         <el-tab-pane label="全部" :name="null" />
@@ -16,10 +28,14 @@
         />
       </el-tabs>
 
-      <el-table v-loading="loading" :data="filteredIndicators" stripe>
+      <el-table
+        v-loading="loading" :data="filteredIndicators" stripe
+        :empty-text="scope === 'mine' ? '还没有自己的指标，点右上角新增' : '暂无公共指标'"
+      >
         <el-table-column label="名称" min-width="160">
           <template #default="{ row }">
             {{ row.name }}
+            <el-tag v-if="row.ownerId === 0" size="small" style="margin-left:8px">公共</el-tag>
             <el-tag v-if="row.status === 0" type="info" size="small" style="margin-left:8px">已禁用</el-tag>
             <div v-if="row.aliases" class="alias-hint">别名：{{ row.aliases }}</div>
           </template>
@@ -40,12 +56,13 @@
         </el-table-column>
         <el-table-column label="操作" width="300">
           <template #default="{ row }">
-            <el-button size="small" @click="toggleStatus(row)">
+            <el-button size="small" :disabled="row.ownerId === 0" @click="toggleStatus(row)">
               {{ row.status === 1 ? '禁用' : '启用' }}
             </el-button>
-            <el-button size="small" @click="openRules(row)" :disabled="row.valueType !== 'number'">区间规则</el-button>
-            <el-button size="small" @click="editInd(row)">编辑</el-button>
-            <el-button size="small" type="danger" @click="deleteInd(row)">删除</el-button>
+            <el-button size="small" @click="openRules(row)"
+                       :disabled="row.valueType !== 'number' || row.ownerId === 0">区间规则</el-button>
+            <el-button size="small" :disabled="row.ownerId === 0" @click="editInd(row)">编辑</el-button>
+            <el-button size="small" type="danger" :disabled="row.ownerId === 0" @click="deleteInd(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -194,6 +211,8 @@ const categories = ref([])
 const indicators = ref([])
 const loading = ref(true)
 const activeCatId = ref(null)
+/** mine=自己的私有指标，public=系统维护的只读指标 */
+const scope = ref('mine')
 const showForm = ref(false)
 const editing = ref(null)
 
@@ -211,8 +230,9 @@ const form = reactive({
 })
 
 const filteredIndicators = computed(() => {
-  if (!activeCatId.value) return indicators.value
-  return indicators.value.filter(i => i.categoryId === activeCatId.value)
+  let list = indicators.value.filter(i => scope.value === 'mine' ? i.ownerId !== 0 : i.ownerId === 0)
+  if (activeCatId.value) list = list.filter(i => i.categoryId === activeCatId.value)
+  return list
 })
 
 function resetForm() {
@@ -258,6 +278,7 @@ async function handleSave() {
       await indicatorApi.update(editing.value.id, data)
     } else {
       await indicatorApi.create(data)
+      scope.value = 'mine'
     }
     showForm.value = false
     await fetchData()
@@ -353,6 +374,8 @@ onMounted(fetchData)
 
 <style scoped>
 .card-header { display: flex; justify-content: space-between; align-items: center; }
+.scope-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 4px; }
+.scope-hint { font-size: 12px; color: #909399; }
 .alias-hint { font-size: 12px; color: #909399; margin-top: 2px; }
 .field-tip { font-size: 12px; color: #909399; margin-top: 4px; }
 </style>
