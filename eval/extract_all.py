@@ -30,6 +30,7 @@ def main():
     ap.add_argument("--samples", default="samples")
     ap.add_argument("--out", default="raw3")
     ap.add_argument("--category", type=int, default=1)
+    ap.add_argument("--only", default="", help="只跑指定样本，逗号分隔，如 06,07")
     args = ap.parse_args()
 
     root = os.path.dirname(os.path.abspath(__file__))
@@ -42,8 +43,12 @@ def main():
                  "-H", "Content-Type: application/json", "-d", login_body])
     token = json.loads(resp)["data"]["token"]
 
+    only = [s.strip() for s in args.only.split(",") if s.strip()]
+
     for fn in sorted(os.listdir(sample_dir)):
         if not fn.lower().endswith((".jpg", ".jpeg", ".png")):
+            continue
+        if only and os.path.splitext(fn)[0] not in only:
             continue
         path = os.path.join(sample_dir, fn)
         up = curl(["-s", "-X", "POST", args.base + "/api/files/upload",
