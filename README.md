@@ -123,6 +123,33 @@ export AGENT_ENABLED=true              # 后端启动前设置
 
 不启动也能用——解读会自动降级为规则摘要。
 
+## 备份与恢复
+
+两样东西要一起备份：**数据库**和**报告照片**。只备份数据库会得到一堆指向不存在文件的记录。
+
+```bash
+# 1) 数据库（结构 + 数据，含中文，必须指定字符集）
+mysqldump -uroot -p --default-character-set=utf8mb4 \
+  --single-transaction super_patient > backup/super_patient-$(date +%F).sql
+
+# 2) 图片：默认落在 backend/uploads（可用 UPLOAD_DIR 覆盖）
+tar -czf backup/uploads-$(date +%F).tar.gz -C backend uploads
+```
+
+恢复到一个空库：
+
+```bash
+mysql -uroot -p -e "CREATE DATABASE super_patient CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
+mysql -uroot -p --default-character-set=utf8mb4 super_patient < backup/super_patient-2026-10-25.sql
+tar -xzf backup/uploads-2026-10-25.tar.gz -C backend
+```
+
+三个注意点：
+
+- `--default-character-set=utf8mb4` 不能省，否则中文指标名会变成 `???`
+- `--single-transaction` 避免备份时锁表（InnoDB 下不阻塞写入）
+- **备份文件含真实健康数据**，不要提交进仓库，也不要放到公开网盘
+
 ## 几个设计点
 
 **用户即患者本人。** 一个账号就是一份健康档案：性别、出生日期直接挂在 `user` 上，检查记录用 `user_id` 外键。没有"账号→患者→记录"的中间层，归属校验也就退化成一次字段比较。
@@ -186,10 +213,10 @@ export AGENT_ENABLED=true              # 后端启动前设置
 
 记录详情页的「AI 解读」有两个模式，区别不在 prompt，而在**模型有没有工具**：
 
-| 模式 | 数据来源 | 调用次数 | 实测耗时 |
-|---|---|---|---|
-| 快速（simple） | Java 组装好的证据包 | 1 次生成 | ~7s |
-| 深读（agent） | 模型自己调工具取数 | 1-6 次工具 + 生成 | 2-8s |
+| 模式 | 数据来源 | 调用次数 | 实测耗时 | 定位 |
+|---|---|---|---|---|
+| **深读（agent）** | 模型自己调工具取数 | 1-6 次工具 + 生成 | 2-8s | **默认路径** |
+| 快速（simple） | Java 组装好的证据包 | 1 次生成 | ~7s | 兜底：服务不可用或成本敏感时 |
 
 agent 模式只拿到 `recordId` 和问题，可用五个只读工具：`find_indicator` / `list_records` / `get_record` / `get_trend` / `get_reference_rules`。每次调用都留痕到 `insight_log`（问题、轮数、工具次数、token、耗时、是否降级），可用 `GET /api/insights/logs` 回看。同一份代码，问法不同路径就不同：
 
@@ -216,6 +243,8 @@ agent 模式只拿到 `recordId` 和问题，可用五个只读工具：`find_in
 - **第一轮只有 27/30，暴露的是工具缺口**：问「上次检查是什么时候」时模型手上只有 get_record / get_trend，跨记录问题答不了；补了 list_records 才到 30/30
 
 **护栏**：最大 6 轮 / 20 秒；相同工具参数重复调用直接回 error 逼它换策略；**一次工具都没调就想作答 = 编数据，直接拒绝并降级**；命中「建议/治疗/用药/剂量/确诊」的内容整条丢弃；免责声明由 Java 拼接，模型无权生成。
+
+**quick 只做兜底**：证据包模式（simple）没有工具，问「血红蛋白是多少」「上次是什么时候」都会退化成复述全量数据（见下方对照实验：17/30）。因此后端默认走 agent，simple 仅保留给「Agent 服务不可用」或成本敏感的场景。
 
 **降级**：Python 服务没启动或超时 → Java 用规则拼摘要（“本次共 6 项，其中 2 项超出参考区间”），功能不依赖模型。Agent 服务细节见 [agent/README.md](agent/README.md)。
 

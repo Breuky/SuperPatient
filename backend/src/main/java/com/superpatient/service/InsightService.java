@@ -79,7 +79,9 @@ public class InsightService {
         }
 
         long started = System.currentTimeMillis();
-        boolean agentMode = "agent".equalsIgnoreCase(request.getMode());
+        // 默认走深读：simple 只是模型/服务异常时的兜底，不该是主路径
+        boolean agentMode = request.getMode() == null || request.getMode().isBlank()
+                || "agent".equalsIgnoreCase(request.getMode());
         InsightVO result;
         if (!enabled) {
             result = fallback(record, "未启用 Agent 服务");

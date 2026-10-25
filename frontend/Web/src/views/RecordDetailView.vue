@@ -25,6 +25,9 @@
                   <el-radio-button value="simple">快速</el-radio-button>
                   <el-radio-button value="agent">深读</el-radio-button>
                 </el-radio-group>
+                <span class="mode-hint">
+                  {{ insightMode === 'agent' ? '模型自己决定查哪些数据' : '一次性喂全量数据，便宜但容易答非所问' }}
+                </span>
                 <el-button size="small" type="primary" :loading="insightLoading" @click="loadInsight">
                   {{ insight ? '重新生成' : '生成解读' }}
                 </el-button>
@@ -236,6 +239,7 @@ onMounted(async () => {
 <style scoped>
 .ins-head { display: flex; align-items: center; justify-content: space-between; }
 .ins-actions { display: flex; align-items: center; gap: 10px; }
+.mode-hint { font-size: var(--font-xs); font-weight: 400; color: var(--text-hint); }
 .ins-summary { font-size: var(--font-md); line-height: 1.65; color: var(--text-primary); margin-bottom: 10px; }
 .ins-item { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border-light); }
 .ins-name { font-weight: 600; white-space: nowrap; }
