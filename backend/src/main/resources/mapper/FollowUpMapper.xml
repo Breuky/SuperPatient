@@ -55,12 +55,17 @@
                DATEDIFF(CURDATE(), f.due_date) AS overdueDays,
                f.priority,
                f.reason,
+               f.note,
                f.status
         FROM follow_up f
         JOIN exam_indicator i ON i.id = f.indicator_id
         WHERE f.user_id = #{userId} AND f.status = 'pending'
         ORDER BY f.priority DESC, f.due_date ASC
     </select>
+
+    <update id="updateNote">
+        UPDATE follow_up SET note = #{note} WHERE id = #{id}
+    </update>
 
     <update id="updateStatus">
         UPDATE follow_up

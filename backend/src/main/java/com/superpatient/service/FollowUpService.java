@@ -37,10 +37,46 @@ public class FollowUpService {
     private static final int MAX_HISTORY = 6;
 
     private final FollowUpMapper followUpMapper;
+    private final InsightService insightService;
 
     public List<FollowUpVO> list(Long userId) {
         refresh(userId);
-        return followUpMapper.findPending(userId);
+        List<FollowUpVO> items = followUpMapper.findPending(userId);
+        enrichNote(items);
+        return items;
+    }
+
+    /**
+     * 只给还没生成过文案的项调用一次模型，结果写回表里；
+     * 模型不可用时 note 保持为空，前端显示规则生成的 reason。
+     */
+    private void enrichNote(List<FollowUpVO> items) {
+        List<FollowUpVO> missing = items.stream()
+                .filter(v -> v.getNote() == null || v.getNote().isBlank())
+                .toList();
+        if (missing.isEmpty()) return;
+
+        List<Map<String, Object>> payload = new ArrayList<>();
+        for (FollowUpVO v : missing) {
+            Map<String, Object> item = new LinkedHashMap<>();
+            item.put("indicator", v.getIndicatorName());
+            item.put("reason", v.getReason());
+            item.put("lastExamDate", v.getLastExamDate() == null ? null : v.getLastExamDate().toString());
+            item.put("dueDate", v.getDueDate() == null ? null : v.getDueDate().toString());
+            item.put("overdueDays", v.getOverdueDays());
+            item.put("priority", v.getPriority());
+            payload.add(item);
+        }
+
+        Map<String, String> notes = insightService.followUpNotes(payload);
+        if (notes.isEmpty()) return;
+
+        for (FollowUpVO v : missing) {
+            String note = notes.get(v.getIndicatorName());
+            if (note == null || note.isBlank()) continue;
+            v.setNote(note);
+            followUpMapper.updateNote(v.getId(), note);
+        }
     }
 
     @Transactional

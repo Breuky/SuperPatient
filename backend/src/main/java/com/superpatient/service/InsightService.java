@@ -6,6 +6,8 @@ import com.superpatient.dto.RecordDetailVO;
 import com.superpatient.dto.ValueVO;
 import com.superpatient.entity.ExamValue;
 import com.superpatient.exception.BusinessException;
+import com.superpatient.entity.InsightLog;
+import com.superpatient.mapper.InsightLogMapper;
 import com.superpatient.mapper.ValueMapper;
 import com.superpatient.util.CurrentHolder;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,8 @@ public class InsightService {
 
     private final RecordService recordService;
     private final ValueMapper valueMapper;
+    private final InsightLogMapper insightLogMapper;
+    private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
     private final RestClient restClient;
     private final boolean enabled;
     private final String model;
@@ -43,6 +47,8 @@ public class InsightService {
 
     public InsightService(RecordService recordService,
                           ValueMapper valueMapper,
+                          InsightLogMapper insightLogMapper,
+                          com.fasterxml.jackson.databind.ObjectMapper objectMapper,
                           @Value("${app.agent.enabled:false}") boolean enabled,
                           @Value("${app.agent.base-url:http://127.0.0.1:8001}") String baseUrl,
                           @Value("${app.agent.model:qwen-plus}") String model,
@@ -50,6 +56,8 @@ public class InsightService {
                           @Value("${server.port:8080}") int serverPort) {
         this.recordService = recordService;
         this.valueMapper = valueMapper;
+        this.insightLogMapper = insightLogMapper;
+        this.objectMapper = objectMapper;
         this.enabled = enabled;
         this.model = model;
         this.apiKey = apiKey;
@@ -70,9 +78,13 @@ public class InsightService {
             throw new BusinessException("检查记录不存在");
         }
 
+        long started = System.currentTimeMillis();
         boolean agentMode = "agent".equalsIgnoreCase(request.getMode());
+        InsightVO result;
         if (!enabled) {
-            return fallback(record, "未启用 Agent 服务");
+            result = fallback(record, "未启用 Agent 服务");
+            logInvocation(request, result, started);
+            return result;
         }
 
         try {
@@ -98,13 +110,88 @@ public class InsightService {
 
             if (response == null || !Boolean.TRUE.equals(response.get("ok"))) {
                 String error = response == null ? "无响应" : String.valueOf(response.get("error"));
-                return fallback(record, error);
+                result = fallback(record, error);
+            } else {
+                result = toVO(response);
             }
-            return toVO(response);
         } catch (Exception e) {
             log.warn("Agent 服务调用失败，降级为规则摘要: {}", e.getMessage());
-            return fallback(record, e.getMessage());
+            result = fallback(record, e.getMessage());
         }
+        logInvocation(request, result, started);
+        return result;
+    }
+
+    /** 留痕用于观察真实使用：问了什么、查了几次工具、花了多少 token。失败不影响主流程 */
+    private void logInvocation(InsightRequest request, InsightVO vo, long started) {
+        try {
+            InsightLog entry = new InsightLog();
+            entry.setUserId(CurrentHolder.getCurrentId());
+            entry.setRecordId(request.getRecordId());
+            entry.setMode(vo.getMode());
+            entry.setQuestion(request.getQuestion());
+            entry.setTurns(vo.getTurns());
+            entry.setToolCalls(vo.getTrace() == null ? 0 : vo.getTrace().size());
+            entry.setTokens(vo.getUsage() == null ? 0 : intOf(vo.getUsage().get("total_tokens")));
+            entry.setElapsedMs((int) (System.currentTimeMillis() - started));
+            entry.setDegraded(vo.isDegraded() ? 1 : 0);
+            entry.setSummary(truncate(vo.getSummary(), 1000));
+            if (vo.getTrace() != null && !vo.getTrace().isEmpty()) {
+                entry.setTraceJson(objectMapper.writeValueAsString(vo.getTrace()));
+            }
+            insightLogMapper.insert(entry);
+        } catch (Exception e) {
+            log.debug("记录 Agent 调用留痕失败: {}", e.getMessage());
+        }
+    }
+
+    public List<InsightLog> recentLogs(Long userId, Integer limit) {
+        return insightLogMapper.findRecent(userId, limit == null ? 20 : Math.min(limit, 100));
+    }
+
+    private static int intOf(Object v) {
+        return v instanceof Number ? ((Number) v).intValue() : 0;
+    }
+
+    private static String truncate(String s, int max) {
+        if (s == null) return null;
+        return s.length() <= max ? s : s.substring(0, max);
+    }
+
+    /**
+     * 随访提醒的文案润色：一次请求批量处理，失败就返回空 map（前端回落到 reason）。
+     */
+    public Map<String, String> followUpNotes(List<Map<String, Object>> items) {
+        Map<String, String> notes = new LinkedHashMap<>();
+        if (!enabled || items == null || items.isEmpty() || apiKey.isBlank()) {
+            return notes;
+        }
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> response = restClient.post()
+                    .uri("/agent/followup-note")
+                    .header("X-Llm-Key", apiKey)
+                    .header("X-Llm-Model", model)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("items", items))
+                    .retrieve()
+                    .body(Map.class);
+
+            if (response == null || !Boolean.TRUE.equals(response.get("ok"))) {
+                return notes;
+            }
+            for (Object item : (List<Object>) response.getOrDefault("notes", List.of())) {
+                Map<String, Object> m = (Map<String, Object>) item;
+                Object indicator = m.get("indicator");
+                Object note = m.get("note");
+                if (indicator != null && note != null) {
+                    notes.put(String.valueOf(indicator), String.valueOf(note));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("提醒文案生成失败，使用规则文案: {}", e.getMessage());
+        }
+        return notes;
     }
 
     /** 证据包：这次检查 + 异常项的历史序列，供 simple 模式一次性生成 */

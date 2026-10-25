@@ -16,6 +16,7 @@ public class FollowUp {
     private LocalDate dueDate;
     private Integer priority;
     private String reason;
+    private String note;
     /** pending / done / dismissed */
     private String status;
     private LocalDateTime createdAt;

@@ -28,6 +28,9 @@ public interface FollowUpMapper {
 
     List<FollowUpVO> findPending(@Param("userId") Long userId);
 
+    /** 回填 Agent 生成的文案，避免每次打开首页都调模型 */
+    int updateNote(@Param("id") Long id, @Param("note") String note);
+
     int updateStatus(@Param("id") Long id,
                      @Param("userId") Long userId,
                      @Param("status") String status);

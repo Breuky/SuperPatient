@@ -43,7 +43,7 @@
             已超 {{ f.overdueDays }} 天
           </el-tag>
           <el-tag v-else type="info" size="small" effect="plain">还有 {{ -f.overdueDays }} 天</el-tag>
-          <span class="fu-reason">{{ f.reason }}</span>
+          <span class="fu-reason" :title="f.reason">{{ f.note || f.reason }}</span>
         </div>
         <div class="fu-side">
           <span class="fu-date">上次 {{ f.lastExamDate }} · 建议 {{ f.dueDate }}</span>

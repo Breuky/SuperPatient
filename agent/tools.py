@@ -50,6 +50,17 @@ class ToolBox:
         {
             "type": "function",
             "function": {
+                "name": "list_records",
+                "description": "列出最近的检查记录（日期、类型、医院、异常项数）。问「上次检查」或需要找某次记录 id 时先调它。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {"limit": {"type": "integer", "description": "最多几条，默认 10"}},
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "get_trend",
                 "description": "取某个指标的历史数值序列（按时间升序），用于和过去对比。",
                 "parameters": {
@@ -129,6 +140,17 @@ class ToolBox:
             elif i.get("indicatorId") in hits:
                 hits[i["indicatorId"]]["has_history"] = True
         return list(hits.values())[:10]
+
+    def _list_records(self, limit=10):
+        data = self._get("/api/records?page=1&pageSize=%d" % int(limit or 10)) or {}
+        rows = data.get("rows") or []
+        return [{
+            "record_id": r.get("id"),
+            "date": (r.get("examDate") or "")[:10],
+            "category": r.get("categoryName"),
+            "hospital": r.get("hospital"),
+            "abnormal_count": r.get("abnormalCount"),
+        } for r in rows]
 
     def _get_record(self, record_id=None):
         if not record_id:

@@ -19,5 +19,7 @@ public class FollowUpVO {
     private Integer priority;
     /** 规则生成的依据，只陈述事实 */
     private String reason;
+    /** Agent 润色后的一句话；为空时前端用 reason */
+    private String note;
     private String status;
 }

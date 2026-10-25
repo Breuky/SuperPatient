@@ -28,6 +28,8 @@ class InsightServiceFallbackTest {
     void setUp() {
         recordService = mock(RecordService.class);
         service = new InsightService(recordService, mock(ValueMapper.class),
+                mock(com.superpatient.mapper.InsightLogMapper.class),
+                new com.fasterxml.jackson.databind.ObjectMapper(),
                 false, "http://127.0.0.1:8001", "qwen-plus", "", 8080);
     }
 

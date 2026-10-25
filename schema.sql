@@ -181,6 +181,7 @@ CREATE TABLE IF NOT EXISTS `follow_up` (
     `due_date`       DATE         NOT NULL COMMENT '到期复查日',
     `priority`       TINYINT      NOT NULL DEFAULT 0 COMMENT '0=普通 1=连续异常',
     `reason`         VARCHAR(255) DEFAULT NULL COMMENT '规则生成的依据',
+    `note`           VARCHAR(500) DEFAULT NULL COMMENT 'Agent 润色后的一句话',
     `status`         VARCHAR(16)  NOT NULL DEFAULT 'pending' COMMENT 'pending/done/dismissed',
     `created_at`     DATETIME     DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),

@@ -17,6 +17,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from agent import run_agent, run_simple  # noqa: E402
+from notes import run_followup_notes  # noqa: E402
 from llm import LlmError  # noqa: E402
 
 DEFAULT_JAVA_BASE = os.environ.get("JAVA_BASE", "http://localhost:8080")
@@ -87,6 +88,8 @@ class Handler(BaseHTTPRequestHandler):
                     body.get("recordId"), body.get("question"), model)
             elif self.path == "/agent/summarize":
                 result = run_simple(api_key, body.get("evidence") or {}, model)
+            elif self.path == "/agent/followup-note":
+                result = run_followup_notes(api_key, body.get("items") or [], model)
             else:
                 return self._json(404, {"ok": False, "error": "not found"})
         except LlmError as e:

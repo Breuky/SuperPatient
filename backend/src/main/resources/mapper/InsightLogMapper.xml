@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.superpatient.mapper.InsightLogMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO insight_log
+            (user_id, record_id, mode, question, turns, tool_calls, tokens, elapsed_ms, degraded, summary, trace_json)
+        VALUES
+            (#{userId}, #{recordId}, #{mode}, #{question}, #{turns}, #{toolCalls},
+             #{tokens}, #{elapsedMs}, #{degraded}, #{summary}, #{traceJson})
+    </insert>
+
+    <select id="findRecent" resultType="com.superpatient.entity.InsightLog">
+        SELECT * FROM insight_log
+        WHERE user_id = #{userId}
+        ORDER BY id DESC
+        LIMIT #{limit}
+    </select>
+
+</mapper>
