@@ -132,7 +132,9 @@
       v-model:visible="reviewVisible"
       :result="extractResult"
       :indicators="activeIndicators"
+      :category-id="form.categoryId"
       @apply="applyExtraction"
+      @created="reloadCategories"
     />
   </div>
 </template>
@@ -237,6 +239,14 @@ function applyExtraction(items) {
   if (r.hospital && !form.hospital) form.hospital = r.hospital
 
   ElMessage.success(`已填入 ${items.length} 项，请核对后保存`)
+}
+
+/** 校对页新建了私有指标后，刷新分类让它在表单里出现 */
+async function reloadCategories() {
+  try {
+    const res = await categoryApi.list()
+    categories.value = res.data
+  } catch (e) { console.error(e) }
 }
 
 async function loadFocus() {
