@@ -38,6 +38,7 @@ class ReportExtractionServiceTest {
     @Mock private FileService fileService;
     @Mock private IndicatorMapper indicatorMapper;
     @Mock private com.superpatient.mapper.UserMapper userMapper;
+    @Mock private com.superpatient.mapper.ValueMapper valueMapper;
     @Mock private ReferenceRangeService referenceRangeService;
     @Mock private LlmVisionClient llm;
 
@@ -45,7 +46,7 @@ class ReportExtractionServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new ReportExtractionService(fileService, indicatorMapper, userMapper,
+        service = new ReportExtractionService(fileService, indicatorMapper, userMapper, valueMapper,
                 referenceRangeService, new IndicatorMatcher(), llm, new ObjectMapper());
     }
 
@@ -121,6 +122,7 @@ class ReportExtractionServiceTest {
     }
 
     private void stubImageAndPool() throws Exception {
+        when(valueMapper.findLatestValues(any())).thenReturn(List.of());
         when(fileService.load(anyLong()))
                 .thenReturn(new FileService.FileContent(new ByteArrayResource(new byte[]{1, 2, 3}), "image/png"));
         when(indicatorMapper.findVisibleByCategory(anyInt(), any())).thenReturn(List.of(

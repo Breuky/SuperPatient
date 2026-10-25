@@ -63,6 +63,18 @@
           AND (i.owner_id = 0 OR i.owner_id = #{userId})
     </select>
 
+    <select id="findLatestValues" resultType="com.superpatient.dto.IndicatorLastValue">
+        SELECT t.indicator_id AS indicatorId, t.value_decimal AS valueDecimal
+        FROM (
+            SELECT v.indicator_id, v.value_decimal,
+                   ROW_NUMBER() OVER (PARTITION BY v.indicator_id ORDER BY r.exam_date DESC, v.id DESC) AS rn
+            FROM exam_value v
+            JOIN exam_record r ON r.id = v.record_id
+            WHERE r.user_id = #{userId} AND v.value_decimal IS NOT NULL
+        ) t
+        WHERE t.rn = 1
+    </select>
+
     <select id="findTrendableIndicators" resultType="com.superpatient.dto.TrendableIndicatorVO">
         SELECT i.id            AS indicatorId,
                i.name          AS indicatorName,

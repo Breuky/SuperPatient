@@ -9,9 +9,11 @@ import com.superpatient.extract.DoubleReadReconciler;
 import com.superpatient.extract.ExtractionPrompt;
 import com.superpatient.extract.IndicatorMatcher;
 import com.superpatient.extract.UnitNormalizer;
+import com.superpatient.extract.ValueSanityChecker;
 import com.superpatient.llm.LlmVisionClient;
 import com.superpatient.mapper.IndicatorMapper;
 import com.superpatient.mapper.UserMapper;
+import com.superpatient.mapper.ValueMapper;
 import com.superpatient.util.CurrentHolder;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -44,6 +46,7 @@ public class ReportExtractionService {
     private final FileService fileService;
     private final IndicatorMapper indicatorMapper;
     private final UserMapper userMapper;
+    private final ValueMapper valueMapper;
     private final ReferenceRangeService referenceRangeService;
     private final IndicatorMatcher indicatorMatcher;
     private final LlmVisionClient llmVisionClient;
@@ -77,15 +80,16 @@ public class ReportExtractionService {
         ReferenceRangeService.UserContext ctx = ReferenceRangeService.UserContext.of(
                 userMapper.findById(CurrentHolder.getCurrentId()));
         String prompt = ExtractionPrompt.build(pool);
+        Map<Integer, BigDecimal> lastValues = loadLastValues();
         if (doubleRead) {
-            return parseDouble(bytes, mimeType, prompt, pool, categoryId, ctx);
+            return parseDouble(bytes, mimeType, prompt, pool, categoryId, ctx, lastValues);
         }
 
         String raw = llmVisionClient.extract(bytes, mimeType, prompt);
         log.info("抽取原始输出({}): {}", llmVisionClient.displayName(),
                 raw.length() > 500 ? raw.substring(0, 500) + "..." : raw);
 
-        return assemble(raw, pool, categoryId, ctx);
+        return assemble(raw, pool, categoryId, ctx, lastValues);
     }
 
     /**
@@ -94,7 +98,8 @@ public class ReportExtractionService {
      */
     private ExtractResultVO parseDouble(byte[] bytes, String mimeType, String prompt,
                                         List<ExamIndicator> pool, Integer categoryId,
-                                        ReferenceRangeService.UserContext ctx) {
+                                        ReferenceRangeService.UserContext ctx,
+                                        Map<Integer, BigDecimal> lastValues) {
         CompletableFuture<String> first = CompletableFuture.supplyAsync(
                 () -> llmVisionClient.extract(bytes, mimeType, prompt));
         CompletableFuture<String> second = CompletableFuture.supplyAsync(
@@ -109,11 +114,11 @@ public class ReportExtractionService {
             log.warn("精读的两次调用有一路失败，退化为单读: {}", e.getMessage());
             String single = safeJoin(first, second);
             if (single == null) throw new BusinessException("模型调用失败，请稍后重试");
-            return assemble(single, pool, categoryId, ctx);
+            return assemble(single, pool, categoryId, ctx, lastValues);
         }
 
-        ExtractResultVO vo1 = safeAssemble(raw1, pool, categoryId, ctx);
-        ExtractResultVO vo2 = safeAssemble(raw2, pool, categoryId, ctx);
+        ExtractResultVO vo1 = safeAssemble(raw1, pool, categoryId, ctx, lastValues);
+        ExtractResultVO vo2 = safeAssemble(raw2, pool, categoryId, ctx, lastValues);
         if (vo1 == null && vo2 == null) throw new BusinessException("模型返回的 JSON 无法解析");
         if (vo1 == null) return vo2;
         if (vo2 == null) return vo1;
@@ -173,9 +178,10 @@ public class ReportExtractionService {
     }
 
     private ExtractResultVO safeAssemble(String raw, List<ExamIndicator> pool, Integer categoryId,
-                                         ReferenceRangeService.UserContext ctx) {
+                                         ReferenceRangeService.UserContext ctx,
+                                         Map<Integer, BigDecimal> lastValues) {
         try {
-            return assemble(raw, pool, categoryId, ctx);
+            return assemble(raw, pool, categoryId, ctx, lastValues);
         } catch (Exception e) {
             log.warn("精读有一路结果无法解析: {}", e.getMessage());
             return null;
@@ -183,7 +189,8 @@ public class ReportExtractionService {
     }
 
     private ExtractResultVO assemble(String raw, List<ExamIndicator> pool, Integer categoryId,
-                                     ReferenceRangeService.UserContext ctx) {
+                                     ReferenceRangeService.UserContext ctx,
+                                     Map<Integer, BigDecimal> lastValues) {
         JsonNode root = readJson(raw);
 
         ExtractResultVO vo = new ExtractResultVO();
@@ -233,14 +240,15 @@ public class ReportExtractionService {
                 vo.getUnmatched().add(unmatched);
                 continue;
             }
-            vo.getCandidates().add(toCandidate(item, rawName, rawValue, rawUnit, match, ctx));
+            vo.getCandidates().add(toCandidate(item, rawName, rawValue, rawUnit, match, ctx, lastValues));
         }
         return vo;
     }
 
     private ExtractResultVO.Candidate toCandidate(JsonNode item, String rawName, String rawValue,
                                                   String rawUnit, IndicatorMatcher.Match match,
-                                                  ReferenceRangeService.UserContext ctx) {
+                                                  ReferenceRangeService.UserContext ctx,
+                                                  Map<Integer, BigDecimal> lastValues) {
         ExamIndicator indicator = match.indicator();
         List<String> warnings = new ArrayList<>();
 
@@ -296,6 +304,12 @@ public class ReportExtractionService {
         c.setRefText(text(item, "refText"));
         c.setIsAbnormal(calcAbnormal(value, range[0], range[1]));
 
+        // 量级 / 基线校验：只提示，不改值
+        for (ValueSanityChecker.Finding f : ValueSanityChecker.check(
+                value, range[0], range[1], lastValues.get(indicator.getId()))) {
+            warnings.add(f.message());
+        }
+
         if (!warnings.isEmpty()) {
             c.setWarning(String.join("；", warnings));
         }
@@ -347,6 +361,21 @@ public class ReportExtractionService {
             return objectMapper.readTree(s.substring(start, end + 1));
         } catch (Exception e) {
             throw new BusinessException("模型返回的 JSON 无法解析: " + e.getMessage());
+        }
+    }
+
+    /** 当前用户每个指标最近一次的值，用于基线比对；查不到不影响抽取 */
+    private Map<Integer, BigDecimal> loadLastValues() {
+        try {
+            return valueMapper.findLatestValues(CurrentHolder.getCurrentId()).stream()
+                    .filter(v -> v.getIndicatorId() != null && v.getValueDecimal() != null)
+                    .collect(java.util.stream.Collectors.toMap(
+                            com.superpatient.dto.IndicatorLastValue::getIndicatorId,
+                            com.superpatient.dto.IndicatorLastValue::getValueDecimal,
+                            (x, y) -> x));
+        } catch (Exception e) {
+            log.warn("读取历史值失败，跳过基线校验: {}", e.getMessage());
+            return Map.of();
         }
     }
 
