@@ -28,6 +28,40 @@
       </el-col>
     </el-row>
 
+    <el-card v-if="stats.length" class="cat-card">
+      <template #header>
+        <div class="cat-head">
+          <span>按题型</span>
+          <span class="cat-hint">哪类问题最多、最贵、最容易失败——用来决定下一步优化什么</span>
+        </div>
+      </template>
+      <el-table :data="stats" size="small">
+        <el-table-column label="题型" width="140">
+          <template #default="{ row }">
+            <el-tag size="small" :type="categoryTagType(row.category)">{{ categoryText(row.category) }}</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="count" label="问题数" width="90" align="right" />
+        <el-table-column label="平均轮数" width="110" align="right">
+          <template #default="{ row }">{{ row.avgTurns ?? '-' }}</template>
+        </el-table-column>
+        <el-table-column label="平均工具" width="110" align="right">
+          <template #default="{ row }">{{ row.avgTools ?? '-' }}</template>
+        </el-table-column>
+        <el-table-column label="平均 token" width="120" align="right">
+          <template #default="{ row }">{{ row.avgTokens ?? 0 }}</template>
+        </el-table-column>
+        <el-table-column label="平均耗时" width="110" align="right">
+          <template #default="{ row }">{{ ((row.avgElapsedMs || 0) / 1000).toFixed(1) }}s</template>
+        </el-table-column>
+        <el-table-column label="降级" width="90" align="right">
+          <template #default="{ row }">
+            <span :class="row.degradedCount ? 'bad' : 'ok'">{{ row.degradedCount || 0 }}</span>
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-card>
+
     <el-card>
       <el-table v-if="logs.length || loading" v-loading="loading" :data="logs" stripe>
         <el-table-column type="expand">
@@ -61,6 +95,11 @@
         </el-table-column>
         <el-table-column prop="question" label="问题" min-width="220">
           <template #default="{ row }">{{ row.question || '（页面直接生成，无提问）' }}</template>
+        </el-table-column>
+        <el-table-column label="题型" width="110">
+          <template #default="{ row }">
+            <el-tag size="small" :type="categoryTagType(row.category)">{{ categoryText(row.category) }}</el-tag>
+          </template>
         </el-table-column>
         <el-table-column label="轮数" width="80" align="right">
           <template #default="{ row }">{{ row.turns ?? '-' }}</template>
@@ -99,7 +138,29 @@ import StatCard from '@/components/StatCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
 
 const logs = ref([])
+const stats = ref([])
 const loading = ref(true)
+
+const CATEGORY_LABELS = {
+  abnormal: '异常概览',
+  trend: '趋势对比',
+  cross_record: '跨记录',
+  value: '单指标取值',
+  summary: '总体概括',
+  boundary: '越界提问',
+  other: '其他'
+}
+
+function categoryText(code) {
+  return CATEGORY_LABELS[code] || '其他'
+}
+
+function categoryTagType(code) {
+  if (code === 'boundary') return 'warning'
+  if (code === 'cross_record') return 'danger'
+  if (code === 'trend') return 'primary'
+  return 'info'
+}
 
 const avgTurns = computed(() => avg('turns'))
 const avgTools = computed(() => avg('toolCalls'))
@@ -134,8 +195,9 @@ function formatArgs(args) {
 async function fetchLogs() {
   loading.value = true
   try {
-    const res = await insightApi.logs(50)
-    logs.value = res.data || []
+    const [logsRes, statsRes] = await Promise.all([insightApi.logs(50), insightApi.stats()])
+    logs.value = logsRes.data || []
+    stats.value = statsRes.data || []
   } catch (e) {
     console.error(e)
   } finally {
@@ -150,6 +212,10 @@ onMounted(fetchLogs)
 .stats { margin-bottom: 4px; }
 .stats :deep(.el-col) { margin-bottom: 16px; }
 .ok { color: var(--text-hint); font-size: var(--font-sm); }
+.bad { color: var(--red); font-weight: 600; }
+.cat-card { margin-bottom: 16px; }
+.cat-head { display: flex; align-items: baseline; gap: 10px; }
+.cat-hint { font-size: var(--font-xs); font-weight: 400; color: var(--text-hint); }
 
 .trace { padding: 8px 16px 12px 56px; }
 .trace-list { display: flex; flex-direction: column; gap: 6px; }

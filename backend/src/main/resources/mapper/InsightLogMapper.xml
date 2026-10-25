@@ -4,11 +4,25 @@
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO insight_log
-            (user_id, record_id, mode, question, turns, tool_calls, tokens, elapsed_ms, degraded, summary, trace_json)
+            (user_id, record_id, mode, question, category, turns, tool_calls, tokens, elapsed_ms, degraded, summary, trace_json)
         VALUES
-            (#{userId}, #{recordId}, #{mode}, #{question}, #{turns}, #{toolCalls},
+            (#{userId}, #{recordId}, #{mode}, #{question}, #{category}, #{turns}, #{toolCalls},
              #{tokens}, #{elapsedMs}, #{degraded}, #{summary}, #{traceJson})
     </insert>
+
+    <select id="statsByCategory" resultType="com.superpatient.dto.InsightStatVO">
+        SELECT category,
+               COUNT(*)                     AS count,
+               ROUND(AVG(turns), 1)         AS avgTurns,
+               ROUND(AVG(tool_calls), 1)    AS avgTools,
+               ROUND(AVG(tokens), 0)        AS avgTokens,
+               ROUND(AVG(elapsed_ms), 0)    AS avgElapsedMs,
+               SUM(degraded)                AS degradedCount
+        FROM insight_log
+        WHERE user_id = #{userId}
+        GROUP BY category
+        ORDER BY COUNT(*) DESC
+    </select>
 
     <select id="findRecent" resultType="com.superpatient.entity.InsightLog">
         SELECT * FROM insight_log

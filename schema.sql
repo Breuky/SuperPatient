@@ -200,6 +200,7 @@ CREATE TABLE IF NOT EXISTS `insight_log` (
     `record_id`  BIGINT       DEFAULT NULL,
     `mode`       VARCHAR(16)  NOT NULL COMMENT 'simple/agent/rule',
     `question`   VARCHAR(500) DEFAULT NULL,
+    `category`   VARCHAR(20)  DEFAULT 'other' COMMENT '题型，用于统计',
     `turns`      INT          DEFAULT NULL,
     `tool_calls` INT          DEFAULT 0,
     `tokens`     INT          DEFAULT 0,

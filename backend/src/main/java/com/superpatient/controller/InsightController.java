@@ -34,6 +34,12 @@ public class InsightController {
         return Result.success(vo);
     }
 
+    @Operation(summary = "按题型统计", description = "哪类问题最多、最贵、最容易降级")
+    @GetMapping("/stats")
+    public Result stats() {
+        return Result.success(insightService.categoryStats(CurrentHolder.getCurrentId()));
+    }
+
     @Operation(summary = "我的解读记录", description = "最近的 Agent 调用留痕：问题、轮数、工具次数、token、是否降级")
     @GetMapping("/logs")
     public Result logs(@RequestParam(required = false) Integer limit) {

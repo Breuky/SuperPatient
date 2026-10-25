@@ -10,6 +10,7 @@ import com.superpatient.entity.InsightLog;
 import com.superpatient.mapper.InsightLogMapper;
 import com.superpatient.mapper.ValueMapper;
 import com.superpatient.util.CurrentHolder;
+import com.superpatient.util.InsightClassifier;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -132,6 +133,7 @@ public class InsightService {
             entry.setRecordId(request.getRecordId());
             entry.setMode(vo.getMode());
             entry.setQuestion(request.getQuestion());
+            entry.setCategory(InsightClassifier.classify(request.getQuestion()));
             entry.setTurns(vo.getTurns());
             entry.setToolCalls(vo.getTrace() == null ? 0 : vo.getTrace().size());
             entry.setTokens(vo.getUsage() == null ? 0 : intOf(vo.getUsage().get("total_tokens")));
@@ -145,6 +147,10 @@ public class InsightService {
         } catch (Exception e) {
             log.debug("记录 Agent 调用留痕失败: {}", e.getMessage());
         }
+    }
+
+    public List<com.superpatient.dto.InsightStatVO> categoryStats(Long userId) {
+        return insightLogMapper.statsByCategory(userId);
     }
 
     public List<InsightLog> recentLogs(Long userId, Integer limit) {

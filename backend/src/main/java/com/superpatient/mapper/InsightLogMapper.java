@@ -11,4 +11,7 @@ public interface InsightLogMapper {
     int insert(InsightLog log);
 
     List<InsightLog> findRecent(@Param("userId") Long userId, @Param("limit") Integer limit);
+
+    /** 按题型聚合：条数、平均轮数/工具/token/耗时、降级次数 */
+    List<com.superpatient.dto.InsightStatVO> statsByCategory(@Param("userId") Long userId);
 }

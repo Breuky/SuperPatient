@@ -12,6 +12,8 @@ public class InsightLog {
     private Long recordId;
     private String mode;
     private String question;
+    /** 题型：abnormal/trend/cross_record/value/summary/boundary/other */
+    private String category;
     private Integer turns;
     private Integer toolCalls;
     private Integer tokens;
