@@ -31,6 +31,7 @@ def main():
     ap.add_argument("--out", default="raw3")
     ap.add_argument("--category", type=int, default=1)
     ap.add_argument("--only", default="", help="只跑指定样本，逗号分隔，如 06,07")
+    ap.add_argument("--double-read", action="store_true", help="精读：同一张图识别两次并仲裁不一致的行")
     args = ap.parse_args()
 
     root = os.path.dirname(os.path.abspath(__file__))
@@ -54,7 +55,8 @@ def main():
         up = curl(["-s", "-X", "POST", args.base + "/api/files/upload",
                    "-H", "token: " + token, "-F", "file=@" + path, "-F", "type=report"])
         url = json.loads(up)["data"]["url"]
-        body = json.dumps({"imageUrl": url, "categoryId": args.category})
+        body = json.dumps({"imageUrl": url, "categoryId": args.category,
+                           "doubleRead": args.double_read})
         raw = curl(["-s", "-m", "300", "-X", "POST", args.base + "/api/parse/report",
                     "-H", "token: " + token,
                     "-H", "Content-Type: application/json", "-d", body])

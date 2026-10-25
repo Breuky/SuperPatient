@@ -92,18 +92,26 @@
       <template #header>
         <div style="display:flex;align-items:center;justify-content:space-between">
           <span>报告照片 (可选)</span>
-          <el-button
-            v-if="uploadedUrl"
-            type="primary"
-            plain
-            size="small"
-            :loading="parsing"
-            :disabled="uploading"
-            @click="handleParse"
-          >
-            <el-icon><MagicStick /></el-icon>
-            {{ parsing ? '识别中...' : 'AI 识别化验单' }}
-          </el-button>
+          <div class="parse-actions">
+            <el-tooltip
+              content="同一张图识别两次，只对两次不一致的行再问一次模型；耗时约翻倍，数值更稳"
+              placement="top"
+            >
+              <el-checkbox v-model="doubleRead" size="small" :disabled="parsing">精读</el-checkbox>
+            </el-tooltip>
+            <el-button
+              v-if="uploadedUrl"
+              type="primary"
+              plain
+              size="small"
+              :loading="parsing"
+              :disabled="uploading"
+              @click="handleParse"
+            >
+              <el-icon><MagicStick /></el-icon>
+              {{ parsing ? '识别中...' : 'AI 识别化验单' }}
+            </el-button>
+          </div>
         </div>
       </template>
       <el-upload
@@ -174,6 +182,8 @@ const uploadedUrl = ref('')
 const fileList = ref([])
 const parsing = ref(false)
 const uploading = ref(false)
+/** 精读：识别两次并仲裁不一致的行，慢一倍但数值更稳 */
+const doubleRead = ref(false)
 const focusIds = ref(new Set())
 const showOthers = ref(false)
 
@@ -208,7 +218,7 @@ async function handleParse() {
 
   parsing.value = true
   try {
-    const res = await parseApi.report(uploadedUrl.value, form.categoryId)
+    const res = await parseApi.report(uploadedUrl.value, form.categoryId, doubleRead.value)
     const data = res.data || {}
     const n = data.candidates?.length || 0
     const m = data.unmatched?.length || 0
@@ -335,6 +345,7 @@ onMounted(async () => {
 
 <style scoped>
 .ind-header { display: flex; align-items: center; justify-content: space-between; }
+.parse-actions { display: flex; align-items: center; gap: 12px; }
 .ind-hint { font-size: 12px; color: #909399; font-weight: 400; }
 .group-title { font-size: 13px; color: #606266; font-weight: 600; margin: 8px 0 4px; }
 .group-title.clickable { cursor: pointer; color: #909399; font-weight: 400; }

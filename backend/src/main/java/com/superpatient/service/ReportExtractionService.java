@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.superpatient.dto.ExtractResultVO;
 import com.superpatient.entity.ExamIndicator;
 import com.superpatient.exception.BusinessException;
+import com.superpatient.extract.DoubleReadReconciler;
 import com.superpatient.extract.ExtractionPrompt;
 import com.superpatient.extract.IndicatorMatcher;
 import com.superpatient.extract.UnitNormalizer;
@@ -21,6 +22,8 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,6 +50,13 @@ public class ReportExtractionService {
     private final ObjectMapper objectMapper;
 
     public ExtractResultVO parse(String imageUrl, Integer categoryId) {
+        return parse(imageUrl, categoryId, false);
+    }
+
+    /**
+     * @param doubleRead 精读：同一张图识别两次，只对不一致的行再问一次模型仲裁
+     */
+    public ExtractResultVO parse(String imageUrl, Integer categoryId, boolean doubleRead) {
         Long fileId = parseFileId(imageUrl);
         byte[] bytes;
         String mimeType;
@@ -67,11 +77,109 @@ public class ReportExtractionService {
         ReferenceRangeService.UserContext ctx = ReferenceRangeService.UserContext.of(
                 userMapper.findById(CurrentHolder.getCurrentId()));
         String prompt = ExtractionPrompt.build(pool);
+        if (doubleRead) {
+            return parseDouble(bytes, mimeType, prompt, pool, categoryId, ctx);
+        }
+
         String raw = llmVisionClient.extract(bytes, mimeType, prompt);
         log.info("抽取原始输出({}): {}", llmVisionClient.displayName(),
                 raw.length() > 500 ? raw.substring(0, 500) + "..." : raw);
 
         return assemble(raw, pool, categoryId, ctx);
+    }
+
+    /**
+     * 双读：两次调用并行发出 → 逐行比对 → 只对不一致的行做一次带图仲裁。
+     * 任一次失败都退化成单读，不让精读把原本可用的结果搞丢。
+     */
+    private ExtractResultVO parseDouble(byte[] bytes, String mimeType, String prompt,
+                                        List<ExamIndicator> pool, Integer categoryId,
+                                        ReferenceRangeService.UserContext ctx) {
+        CompletableFuture<String> first = CompletableFuture.supplyAsync(
+                () -> llmVisionClient.extract(bytes, mimeType, prompt));
+        CompletableFuture<String> second = CompletableFuture.supplyAsync(
+                () -> llmVisionClient.extract(bytes, mimeType, prompt));
+
+        String raw1;
+        String raw2;
+        try {
+            raw1 = first.join();
+            raw2 = second.join();
+        } catch (Exception e) {
+            log.warn("精读的两次调用有一路失败，退化为单读: {}", e.getMessage());
+            String single = safeJoin(first, second);
+            if (single == null) throw new BusinessException("模型调用失败，请稍后重试");
+            return assemble(single, pool, categoryId, ctx);
+        }
+
+        ExtractResultVO vo1 = safeAssemble(raw1, pool, categoryId, ctx);
+        ExtractResultVO vo2 = safeAssemble(raw2, pool, categoryId, ctx);
+        if (vo1 == null && vo2 == null) throw new BusinessException("模型返回的 JSON 无法解析");
+        if (vo1 == null) return vo2;
+        if (vo2 == null) return vo1;
+
+        List<DoubleReadReconciler.ConflictRow> conflicts = DoubleReadReconciler.findConflicts(vo1, vo2);
+        log.info("精读比对完成：{} 行，其中 {} 行两次不一致", vo1.getCandidates().size(), conflicts.size());
+
+        Map<String, DoubleReadReconciler.Arbitration> resolution = Map.of();
+        if (!conflicts.isEmpty()) {
+            try {
+                String arbitrationPrompt = DoubleReadReconciler.buildArbitrationPrompt(conflicts);
+                String rawArbitration = llmVisionClient.extract(bytes, mimeType, arbitrationPrompt);
+                resolution = DoubleReadReconciler.parseArbitration(rawArbitration, objectMapper);
+            } catch (Exception e) {
+                log.warn("仲裁调用失败，保留两次读数交由用户判断: {}", e.getMessage());
+            }
+        }
+
+        ExtractResultVO merged = DoubleReadReconciler.merge(vo1, vo2, resolution);
+        applyArbitratedValues(merged, pool);
+        return merged;
+    }
+
+    /** 仲裁返回的是"图上印的值"，需要按原单位换算后重算异常标记 */
+    private void applyArbitratedValues(ExtractResultVO vo, List<ExamIndicator> pool) {
+        for (ExtractResultVO.Candidate c : vo.getCandidates()) {
+            if (c.getConflict() == null || c.getConflict().getResolved() == null
+                    || c.getIndicatorId() == null) {
+                continue;
+            }
+            ExamIndicator indicator = pool.stream()
+                    .filter(i -> i.getId().equals(c.getIndicatorId()))
+                    .findFirst().orElse(null);
+            if (indicator == null) continue;
+
+            BigDecimal value = c.getConflict().getResolved();
+            UnitNormalizer.Result unit = UnitNormalizer.normalize(c.getRawUnit(), indicator.getUnit());
+            if (unit.converted()) {
+                value = value.multiply(unit.factor());
+            }
+            c.setValueDecimal(value);
+            c.setUnit(unit.unit());
+            c.setIsAbnormal(calcAbnormal(value, c.getRefMin(), c.getRefMax()));
+        }
+    }
+
+    private String safeJoin(CompletableFuture<String> first, CompletableFuture<String> second) {
+        try {
+            return first.isCompletedExceptionally() ? second.join() : first.join();
+        } catch (Exception e) {
+            try {
+                return second.join();
+            } catch (Exception ignored) {
+                return null;
+            }
+        }
+    }
+
+    private ExtractResultVO safeAssemble(String raw, List<ExamIndicator> pool, Integer categoryId,
+                                         ReferenceRangeService.UserContext ctx) {
+        try {
+            return assemble(raw, pool, categoryId, ctx);
+        } catch (Exception e) {
+            log.warn("精读有一路结果无法解析: {}", e.getMessage());
+            return null;
+        }
     }
 
     private ExtractResultVO assemble(String raw, List<ExamIndicator> pool, Integer categoryId,

@@ -38,6 +38,25 @@ public class ExtractResultVO {
         private Double confidence;
         /** 单位换算、数值异常等提示，供校对页高亮 */
         private String warning;
+        /** 精读模式下两次读数不一致时填充 */
+        private Conflict conflict;
+    }
+
+    /**
+     * 双读冲突：两次识别的同一行读数不同。
+     * resolved 为仲裁结果，仲裁失败（看不清）时为 null，交由用户判断。
+     */
+    @Data
+    public static class Conflict {
+        private BigDecimal first;
+        private BigDecimal second;
+        private BigDecimal resolved;
+        /** 仲裁给出的理由，例如「参考区间 316-354，34 缺一位」 */
+        private String reason;
+        /** 两次完全一致时为 true */
+        private boolean agreement;
+        /** 其中一次没有识别到这一行 */
+        private boolean missingInOneRead;
     }
 
     @Data

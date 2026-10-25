@@ -423,8 +423,22 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
 把图片交给多模态模型抽取指标，**只返回候选值，不落库**。前端在校对页确认后再调 `POST /api/records`。
 
 ```json
-{ "imageUrl": "/api/files/12", "categoryId": 1 }
+{ "imageUrl": "/api/files/12", "categoryId": 1, "doubleRead": false }
 ```
+
+`doubleRead` 为 `true` 时走**精读**：同一张图识别两次，逐行比对，只对两次不一致的行再调一次模型仲裁。耗时与成本约 2-3 倍，默认关闭（可用环境变量 `DOUBLE_READ=true` 改默认值）。
+
+冲突行在候选里多一个 `conflict` 字段：
+
+```json
+"conflict": {
+  "first": 34, "second": 340, "resolved": 340,
+  "reason": "参考区间 316-354，34 少一位",
+  "agreement": false, "missingInOneRead": false
+}
+```
+
+`resolved` 为空表示仲裁也看不清，此时保留第一次读到的值，两个数一起交给用户判断。
 
 ```json
 {

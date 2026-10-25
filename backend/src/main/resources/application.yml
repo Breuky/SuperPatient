@@ -24,6 +24,10 @@ app:
   upload:
     # 报告照片落盘目录（不在静态资源目录下，读取需经 /api/files/{id} 鉴权）
     dir: ${UPLOAD_DIR:./uploads}
+  extract:
+    double-read:
+      # 精读：同一张图识别两次并仲裁不一致的行，耗时和成本约 2-3 倍
+      enabled: ${DOUBLE_READ:false}
   llm:
     # mock=返回固定样本（无需 Key）；qwen=调用通义千问 VL
     provider: ${LLM_PROVIDER:mock}

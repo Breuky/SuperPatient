@@ -8,6 +8,7 @@ import com.superpatient.service.ReportExtractionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,6 +22,10 @@ public class ParseController {
 
     private final ReportExtractionService reportExtractionService;
 
+    /** 全局默认值：请求里没传 doubleRead 时用它 */
+    @Value("${app.extract.double-read.enabled:false}")
+    private boolean doubleReadEnabled;
+
     @Operation(summary = "解析化验单图片",
             description = "返回候选指标与未匹配项，前端校对后走 POST /api/records 落库")
     @PostMapping("/report")
@@ -31,7 +36,11 @@ public class ParseController {
         if (request.getCategoryId() == null) {
             throw new BusinessException("categoryId 不能为空");
         }
-        ExtractResultVO vo = reportExtractionService.parse(request.getImageUrl(), request.getCategoryId());
+        boolean doubleRead = request.getDoubleRead() != null
+                ? request.getDoubleRead()
+                : doubleReadEnabled;
+        ExtractResultVO vo = reportExtractionService.parse(
+                request.getImageUrl(), request.getCategoryId(), doubleRead);
         return Result.success(vo);
     }
 }

@@ -50,13 +50,22 @@
             <el-tag v-else type="info" size="small">正常</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="提示" min-width="150">
+        <el-table-column label="提示" min-width="180">
           <template #default="{ row }">
+            <el-tag
+              v-if="row.conflict && !row.conflict.resolved"
+              type="warning" size="small" style="margin-right:6px"
+            >两次不一致</el-tag>
+            <el-tag
+              v-else-if="row.conflict && row.conflict.resolved"
+              size="small" style="margin-right:6px"
+              :title="row.conflict.reason"
+            >已仲裁</el-tag>
             <span v-if="row.warning" class="warn">{{ row.warning }}</span>
             <span v-else-if="row.matchType !== 'exact'" class="raw">
               别名匹配 {{ Math.round((row.confidence || 0) * 100) }}%
             </span>
-            <span v-else class="raw">-</span>
+            <span v-else-if="!row.conflict" class="raw">-</span>
           </template>
         </el-table-column>
       </el-table>
