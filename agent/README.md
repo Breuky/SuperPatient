@@ -1,0 +1,57 @@
+# Agent 服务
+
+报告解读的 Python 侧，**只用标准库**，不需要 pip 安装任何依赖。
+
+## 为什么单独一个进程
+
+| 层 | 位置 | 性质 |
+|---|---|---|
+| 取数、鉴权、落库、免责声明、降级 | Spring Boot | 确定性、有副作用 |
+| prompt 编排、工具调用决策 | 本服务 | 概率性、无状态、无副作用 |
+
+本服务**不连数据库**，所有数据通过 Java 的只读接口取，鉴权沿用用户自己的 JWT（由 Java 透传）。
+
+## 启动
+
+```bash
+python agent/server.py --port 8001
+# 后端启动时打开开关
+AGENT_ENABLED=true mvn spring-boot:run
+```
+
+## 两种模式
+
+| 端点 | 模式 | 说明 |
+|---|---|---|
+| `POST /agent/summarize` | simple | Java 已经组装好证据包，这里只做一次生成，0 次工具调用 |
+| `POST /agent/report-insight` | agent | 只拿到 `recordId` + 问题，模型自己决定查什么 |
+
+## 可用的只读工具
+
+| 工具 | 用途 |
+|---|---|
+| `find_indicator(keyword)` | 「血脂」→ 具体指标 id；同时查可选指标与「有历史但已停用」的指标 |
+| `get_record(record_id)` | 本次各项值、单位、参考区间、异常标记 |
+| `get_trend(indicator_id, limit)` | 该指标历史序列 |
+| `get_reference_rules(indicator_id)` | 性别/年龄区间规则 |
+
+## 护栏
+
+| 机制 | 说明 |
+|---|---|
+| 最大轮数 6 / 超时 20s | 超了强制收尾 |
+| 重复调用拦截 | 同样的工具+参数第二次直接回 error，逼模型换策略 |
+| 未调用工具即作答 | 判定为编数据，返回失败让 Java 降级为规则摘要 |
+| 医疗建议过滤 | 命中「建议/治疗/用药/剂量/确诊…」的句子直接丢弃 |
+| 免责声明 | 由 Java 拼接，模型无权生成 |
+
+## 实测轨迹差异
+
+```
+问「这次有哪些指标超出参考区间」 → get_record                     2 轮 3.3s
+问「我的血糖最近怎么样」         → find_indicator → get_record
+                                    → get_trend(id=6)            4 轮 6.3s
+问「看看甘油三酯」               → get_record（发现未检测，直接说明） 2 轮 2.1s
+```
+
+同一套代码，路径和轮数由模型自己决定——这是它和「一次 API 调用」的区别。

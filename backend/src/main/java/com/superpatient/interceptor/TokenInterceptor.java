@@ -40,6 +40,7 @@ public class TokenInterceptor implements HandlerInterceptor {
             Claims claims = jwtUtils.parseToken(token);
             Long userId = claims.get("userId", Long.class);
             CurrentHolder.setCurrentId(userId);
+            CurrentHolder.setToken(token);
             return true;
         } catch (Exception e) {
             response.setStatus(401);

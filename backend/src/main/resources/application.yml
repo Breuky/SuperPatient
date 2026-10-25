@@ -24,6 +24,11 @@ app:
   upload:
     # 报告照片落盘目录（不在静态资源目录下，读取需经 /api/files/{id} 鉴权）
     dir: ${UPLOAD_DIR:./uploads}
+  agent:
+    # Python Agent 服务（agent/server.py），关闭时解读自动降级为规则摘要
+    enabled: ${AGENT_ENABLED:false}
+    base-url: ${AGENT_BASE_URL:http://127.0.0.1:8001}
+    model: ${AGENT_MODEL:qwen-plus}
   extract:
     double-read:
       # 精读：同一张图识别两次并仲裁不一致的行，耗时和成本约 2-3 倍

@@ -16,6 +16,50 @@
           <el-descriptions-item v-if="record.notes" label="备注" :span="2">{{ record.notes }}</el-descriptions-item>
         </el-descriptions>
 
+        <el-card style="margin-bottom:16px" class="insight-card">
+          <template #header>
+            <div class="ins-head">
+              <span>AI 解读</span>
+              <div class="ins-actions">
+                <el-radio-group v-model="insightMode" size="small" :disabled="insightLoading">
+                  <el-radio-button value="simple">快速</el-radio-button>
+                  <el-radio-button value="agent">深读</el-radio-button>
+                </el-radio-group>
+                <el-button size="small" type="primary" :loading="insightLoading" @click="loadInsight">
+                  {{ insight ? '重新生成' : '生成解读' }}
+                </el-button>
+              </div>
+            </div>
+          </template>
+
+          <div v-if="insight">
+            <el-alert
+              v-if="insight.degraded"
+              type="warning" :closable="false" show-icon style="margin-bottom:12px"
+              :title="'已降级为规则摘要：' + (insight.warnings[0] || '模型不可用')"
+            />
+            <p class="ins-summary">{{ insight.summary }}</p>
+            <div v-for="(h, i) in insight.highlights" :key="i" class="ins-item">
+              <span class="ins-name">{{ h.indicator }}</span>
+              <span class="ins-text">{{ h.text }}</span>
+              <span v-if="h.basis" class="ins-basis" :title="h.basis">依据</span>
+            </div>
+            <div v-if="insight.trace && insight.trace.length" class="ins-trace">
+              <span class="ins-trace-label">
+                {{ insight.turns }} 轮 · 调用工具 {{ insight.trace.length }} 次
+              </span>
+              <el-tag v-for="(t, i) in insight.trace" :key="i" size="small" class="ins-tool">
+                {{ t.tool }}{{ t.ok ? '' : '(失败)' }}
+              </el-tag>
+            </div>
+            <p class="ins-disclaimer">{{ insight.disclaimer }}</p>
+          </div>
+
+          <div v-else class="ins-empty">
+            让模型读一遍这次结果。深读模式会自己决定查哪些数据（本次结果、历史趋势、区间规则）。
+          </div>
+        </el-card>
+
         <el-card style="margin-bottom:16px">
           <template #header>
             <span>检查结果</span>
@@ -111,10 +155,32 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { recordApi } from '@/api/record'
+import { insightApi } from '@/api/insight'
 import PageHeader from '@/components/PageHeader.vue'
+import { ElMessage } from 'element-plus'
 
 const route = useRoute()
 const router = useRouter()
+
+const insight = ref(null)
+const insightLoading = ref(false)
+/** simple=证据包单次生成，agent=模型自己调工具 */
+const insightMode = ref('agent')
+
+async function loadInsight() {
+  if (!record.value) return
+  insightLoading.value = true
+  try {
+    const res = await insightApi.report(record.value.id, insightMode.value,
+      '请概括这次检查里需要关注的内容')
+    insight.value = res.data
+  } catch (e) {
+    ElMessage.error('解读失败: ' + e.message)
+  } finally {
+    insightLoading.value = false
+  }
+}
+
 const record = ref(null)
 const loading = ref(true)
 
@@ -168,6 +234,21 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+.ins-head { display: flex; align-items: center; justify-content: space-between; }
+.ins-actions { display: flex; align-items: center; gap: 10px; }
+.ins-summary { font-size: var(--font-md); line-height: 1.65; color: var(--text-primary); margin-bottom: 10px; }
+.ins-item { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border-light); }
+.ins-name { font-weight: 600; white-space: nowrap; }
+.ins-text { color: var(--text-secondary); font-size: var(--font-sm); }
+.ins-basis {
+  font-size: var(--font-xs); color: var(--text-hint);
+  border-bottom: 1px dashed var(--border-strong); cursor: help;
+}
+.ins-trace { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+.ins-trace-label { font-size: var(--font-xs); color: var(--text-hint); margin-right: 4px; }
+.ins-tool { font-family: ui-monospace, monospace; }
+.ins-disclaimer { margin-top: 12px; font-size: var(--font-xs); color: var(--text-hint); }
+.ins-empty { color: var(--text-hint); font-size: var(--font-sm); }
 .table-hint {
   font-size: 12px;
   color: #909399;
