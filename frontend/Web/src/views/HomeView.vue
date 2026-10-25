@@ -30,7 +30,7 @@
     <el-card v-if="followUps.length" class="fu-card">
       <template #header>
         <div class="fu-header">
-          <span>待复查 {{ followUps.length }} 项</span>
+          <span>随访提醒 {{ followUps.length }} 项</span>
           <span class="fu-hint">按你自己的历史复查间隔推算，不构成医疗建议</span>
         </div>
       </template>
@@ -39,11 +39,14 @@
         <div class="fu-main">
           <span class="fu-name">{{ f.indicatorName }}</span>
           <el-tag v-if="f.priority === 1" type="danger" size="small">连续异常</el-tag>
+          <el-tag v-if="f.overdueDays > 0" type="warning" size="small" effect="plain">
+            已超 {{ f.overdueDays }} 天
+          </el-tag>
+          <el-tag v-else type="info" size="small" effect="plain">还有 {{ -f.overdueDays }} 天</el-tag>
           <span class="fu-reason">{{ f.reason }}</span>
         </div>
         <div class="fu-side">
-          <el-tag v-if="f.overdueDays > 0" type="warning" size="small">已超 {{ f.overdueDays }} 天</el-tag>
-          <span class="fu-date">上次 {{ f.lastExamDate }} · 到期 {{ f.dueDate }}</span>
+          <span class="fu-date">上次 {{ f.lastExamDate }} · 建议 {{ f.dueDate }}</span>
           <el-button link size="small" @click="dismissFollowUp(f)">忽略</el-button>
         </div>
       </div>

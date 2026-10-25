@@ -20,19 +20,19 @@ import java.util.Map;
  * 随访提醒：全部由用户自己的历史数据推导，不调用模型，也不给医疗建议。
  *
  * 规则：
- *  1. 最近一次结果异常，才有提醒
+ *  1. 最近一次结果异常，就生成提醒——不必等到期，到期只是紧迫度不同
  *  2. 至少有 2 次记录，才能算出「既往间隔中位数」
- *  3. 距上次检查已过中位间隔的 80%，才生成待办
- *  4. 连续 2 次异常 → 间隔减半，标记为高优先级
- *  5. 指标有了更新的检查 → 旧待办自动关闭
+ *  3. 连续 2 次异常 → 间隔减半，标记为高优先级
+ *  4. 指标有了更新的检查、或最新结果恢复正常 → 旧待办自动关闭
+ *
+ * 到期与否由 due_date 与今天的差值表达（overdueDays 为正=已超期，为负=还剩几天），
+ * 不在服务端做拦截。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class FollowUpService {
 
-    /** 到期判定：走完中位间隔的 80% 就算该复查了 */
-    private static final double DUE_RATIO = 0.8;
     /** 计算间隔时最多回看几次 */
     private static final int MAX_HISTORY = 6;
 
@@ -64,7 +64,6 @@ public class FollowUpService {
             grouped.computeIfAbsent(row.getIndicatorId(), k -> new ArrayList<>()).add(row);
         }
 
-        LocalDate today = LocalDate.now();
         for (Map.Entry<Integer, List<FollowUpSource>> entry : grouped.entrySet()) {
             List<FollowUpSource> history = entry.getValue();   // SQL 已按日期倒序
             FollowUpSource latest = history.get(0);
@@ -87,9 +86,6 @@ public class FollowUpService {
                 interval = Math.max(1, interval / 2);
                 priority = 1;
             }
-
-            long waitDays = Math.round(interval * DUE_RATIO);
-            if (today.isBefore(latest.getExamDate().plusDays(waitDays))) continue;
 
             FollowUp followUp = new FollowUp();
             followUp.setUserId(userId);

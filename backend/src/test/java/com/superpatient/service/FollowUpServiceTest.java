@@ -54,7 +54,7 @@ class FollowUpServiceTest {
     }
 
     @Test
-    void noReminderBeforeDueDate() {
+    void createsReminderEvenBeforeDueDate() {
         LocalDate today = LocalDate.now();
         when(followUpMapper.findHistory(USER)).thenReturn(List.of(
                 row(1, today.minusDays(10), 1),
@@ -62,7 +62,10 @@ class FollowUpServiceTest {
 
         followUpService.refresh(USER);
 
-        verify(followUpMapper, never()).upsert(any());
+        FollowUp saved = captureUpsert();
+        assertEquals(today.minusDays(10).plusDays(100), saved.getDueDate(),
+                "未到期也要生成，到期与否交给界面表达");
+        assertTrue(saved.getDueDate().isAfter(today));
     }
 
     @Test
