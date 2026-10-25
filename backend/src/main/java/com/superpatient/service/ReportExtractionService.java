@@ -206,6 +206,10 @@ public class ReportExtractionService {
             throw new BusinessException("模型返回结果缺少 items 数组");
         }
 
+        // 一个指标在一次检查里只能有一个值：报告里 RDW-CV(%) 与 RDW-SD(fL) 这类
+        // 同名不同单位的行可能都归到同一个指标，按「单位匹配优先、无警告优先」保留一条
+        Map<Integer, ExtractResultVO.Candidate> byIndicator = new java.util.LinkedHashMap<>();
+
         for (JsonNode item : items) {
             String rawName = text(item, "name");
             String rawValue = text(item, "value");
@@ -240,9 +244,28 @@ public class ReportExtractionService {
                 vo.getUnmatched().add(unmatched);
                 continue;
             }
-            vo.getCandidates().add(toCandidate(item, rawName, rawValue, rawUnit, match, ctx, lastValues));
+            ExtractResultVO.Candidate candidate = toCandidate(item, rawName, rawValue, rawUnit, match, ctx, lastValues);
+            ExtractResultVO.Candidate existing = byIndicator.get(candidate.getIndicatorId());
+            if (existing == null) {
+                byIndicator.put(candidate.getIndicatorId(), candidate);
+            } else if (prefer(candidate, existing)) {
+                log.info("同一指标出现多行，保留单位更匹配的一条: {} 丢弃 {}",
+                        candidate.getRawName(), existing.getRawName());
+                byIndicator.put(candidate.getIndicatorId(), candidate);
+            } else {
+                log.info("同一指标出现多行，保留: {} 丢弃 {}", existing.getRawName(), candidate.getRawName());
+            }
         }
+        vo.setCandidates(new ArrayList<>(byIndicator.values()));
         return vo;
+    }
+
+    /** 单位与指标库一致、没有警告的行优先保留 */
+    private boolean prefer(ExtractResultVO.Candidate candidate, ExtractResultVO.Candidate existing) {
+        boolean candidateClean = candidate.getWarning() == null;
+        boolean existingClean = existing.getWarning() == null;
+        if (candidateClean != existingClean) return candidateClean;
+        return false;
     }
 
     private ExtractResultVO.Candidate toCandidate(JsonNode item, String rawName, String rawValue,

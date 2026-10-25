@@ -117,6 +117,24 @@ class ReportExtractionServiceTest {
     }
 
     @Test
+    void keepsOneValuePerIndicatorWhenReportHasTwoRowsForIt() throws Exception {
+        stubImageAndPool();
+        when(llm.extract(any(), any(), any())).thenReturn("""
+                {"items":[
+                  {"name":"RDW","value":"50.1","unit":"fL","refText":"39.0-46.0"},
+                  {"name":"RDW","value":"13.7","unit":"%","refText":"11.0-14.5"}
+                ]}
+                """);
+        when(llm.displayName()).thenReturn("mock");
+
+        ExtractResultVO result = service.parse("/api/files/1", 1);
+
+        assertEquals(1, result.getCandidates().size(), "同一个指标在一次检查里只能留一条");
+        assertEquals(4, result.getCandidates().get(0).getIndicatorId());
+        assertEquals("%", result.getCandidates().get(0).getUnit(), "保留单位与指标库一致的那条");
+    }
+
+    @Test
     void rejectsForeignImageUrl() {
         assertThrows(BusinessException.class, () -> service.parse("https://evil.example.com/a.png", 1));
     }
@@ -128,7 +146,8 @@ class ReportExtractionServiceTest {
         when(indicatorMapper.findVisibleByCategory(anyInt(), any())).thenReturn(List.of(
                 indicator(1, "血红蛋白", "HGB,Hb", "g/L", "120", "160"),
                 indicator(2, "白细胞计数", "WBC", "10^9/L", "4", "10"),
-                indicator(3, "葡萄糖", "GLU", "mmol/L", "3.9", "6.1")
+                indicator(3, "葡萄糖", "GLU", "mmol/L", "3.9", "6.1"),
+                indicator(4, "红细胞分布宽度", "RDW", "%", "11", "14.5")
         ));
     }
 
