@@ -29,10 +29,6 @@ app:
     enabled: ${AGENT_ENABLED:false}
     base-url: ${AGENT_BASE_URL:http://127.0.0.1:8001}
     model: ${AGENT_MODEL:qwen-plus}
-    # 仅本地开发：随 Spring Boot 一起拉起 agent/server.py（生产应交由进程管理器）
-    auto-start: ${AGENT_AUTO_START:false}
-    script: ${AGENT_SCRIPT:../agent/server.py}
-    port: ${AGENT_PORT:8001}
   extract:
     double-read:
       # 精读：同一张图识别两次并仲裁不一致的行，耗时和成本约 2-3 倍

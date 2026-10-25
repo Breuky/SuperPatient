@@ -133,10 +133,9 @@ cd backend && AGENT_ENABLED=true mvn spring-boot:run -Dspring-boot.run.profiles=
 - **改 Agent 不用重启后端**：调提示词、加工具、改护栏，只重启 8001 那一个进程
 - **Agent 挂了不影响主业务**：Java 侧自动降级为规则摘要，记录、趋势、识别、提醒照常
 
-**可选便利**（本地图省事时才用，不要用在部署环境）：
+**可选便利**：
 
-- `AGENT_AUTO_START=true` 时，Spring Boot 启动阶段会顺带执行 `python agent/server.py`；8001 已被占用则跳过，应用关闭时连带杀掉子进程
-- 双击根目录 `start-dev.bat`：Agent、后端、前端各开一个窗口
+- 双击根目录 `start-dev.bat`：Agent、后端、前端各开一个独立窗口，改 Agent 只重启第一个窗口
 
 ## 几个设计点
 
