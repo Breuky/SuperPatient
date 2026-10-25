@@ -27,6 +27,28 @@
       </el-col>
     </el-row>
 
+    <el-card v-if="followUps.length" class="fu-card">
+      <template #header>
+        <div class="fu-header">
+          <span>待复查 {{ followUps.length }} 项</span>
+          <span class="fu-hint">按你自己的历史复查间隔推算，不构成医疗建议</span>
+        </div>
+      </template>
+
+      <div v-for="f in followUps" :key="f.id" class="fu-row">
+        <div class="fu-main">
+          <span class="fu-name">{{ f.indicatorName }}</span>
+          <el-tag v-if="f.priority === 1" type="danger" size="small">连续异常</el-tag>
+          <span class="fu-reason">{{ f.reason }}</span>
+        </div>
+        <div class="fu-side">
+          <el-tag v-if="f.overdueDays > 0" type="warning" size="small">已超 {{ f.overdueDays }} 天</el-tag>
+          <span class="fu-date">上次 {{ f.lastExamDate }} · 到期 {{ f.dueDate }}</span>
+          <el-button link size="small" @click="dismissFollowUp(f)">忽略</el-button>
+        </div>
+      </div>
+    </el-card>
+
     <el-card>
       <div class="filter-bar">
         <el-select v-model="categoryId" clearable placeholder="全部分类" @change="fetchRecords" class="filter-item">
@@ -95,10 +117,12 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { ElMessage } from 'element-plus'
 import { recordApi } from '@/api/record'
 import { categoryApi } from '@/api/category'
 import { trendApi } from '@/api/trend'
 import { focusApi } from '@/api/focus'
+import { followUpApi } from '@/api/followUp'
 import PageHeader from '@/components/PageHeader.vue'
 import StatCard from '@/components/StatCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -115,6 +139,7 @@ const pageSize = ref(20)
 const total = ref(0)
 const indicatorCount = ref('-')
 const focusCount = ref('-')
+const followUps = ref([])
 
 const hasFilter = computed(() => !!(categoryId.value || startDate.value || endDate.value))
 const latest = computed(() => records.value[0] || null)
@@ -157,10 +182,21 @@ function goRecord(row) { router.push('/records/' + row.id) }
 
 async function loadSummary() {
   try {
-    const [t, f] = await Promise.all([trendApi.getTrendable(), focusApi.list()])
+    const [t, f, fu] = await Promise.all([
+      trendApi.getTrendable(), focusApi.list(), followUpApi.list()
+    ])
     indicatorCount.value = (t.data || []).length
     focusCount.value = (f.data || []).length
+    followUps.value = fu.data || []
   } catch (e) { console.error(e) }
+}
+
+async function dismissFollowUp(item) {
+  try {
+    await followUpApi.updateStatus(item.id, 'dismissed')
+    followUps.value = followUps.value.filter(x => x.id !== item.id)
+    ElMessage.success('已忽略，下次检查后仍会重新计算')
+  } catch (e) { ElMessage.error(e.message || '操作失败') }
 }
 
 onMounted(async () => {
@@ -187,6 +223,24 @@ onMounted(async () => {
 .filter-item { width: 180px; }
 
 .ok { color: var(--text-hint); font-size: var(--font-sm); }
+
+.fu-card { border-left: 3px solid var(--orange); }
+.fu-header { display: flex; align-items: baseline; gap: 10px; }
+.fu-hint { font-size: var(--font-xs); font-weight: 400; color: var(--text-hint); }
+.fu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-light);
+}
+.fu-row:first-of-type { border-top: none; }
+.fu-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.fu-name { font-weight: 600; white-space: nowrap; }
+.fu-reason { font-size: var(--font-xs); color: var(--text-hint); }
+.fu-side { display: flex; align-items: center; gap: 10px; flex: none; }
+.fu-date { font-size: var(--font-xs); color: var(--text-hint); }
 .nowrap { white-space: nowrap; }
 .pagination-wrap { display: flex; justify-content: center; margin-top: 18px; }
 

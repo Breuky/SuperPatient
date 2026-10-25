@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.superpatient.mapper.FollowUpMapper">
+
+    <select id="findHistory" resultType="com.superpatient.dto.FollowUpSource">
+        SELECT v.indicator_id AS indicatorId,
+               i.name        AS indicatorName,
+               i.unit        AS unit,
+               r.exam_date   AS examDate,
+               v.is_abnormal AS isAbnormal
+        FROM exam_value v
+        JOIN exam_record r    ON r.id = v.record_id
+        JOIN exam_indicator i ON i.id = v.indicator_id
+        WHERE r.user_id = #{userId}
+          AND v.value_decimal IS NOT NULL
+          AND i.status = 1
+          AND (i.owner_id = 0 OR i.owner_id = #{userId})
+        ORDER BY v.indicator_id, r.exam_date DESC
+    </select>
+
+    <insert id="upsert">
+        INSERT INTO follow_up
+            (user_id, indicator_id, last_exam_date, interval_days, due_date, priority, reason, status)
+        VALUES
+            (#{userId}, #{indicatorId}, #{lastExamDate}, #{intervalDays}, #{dueDate}, #{priority}, #{reason}, 'pending')
+        ON DUPLICATE KEY UPDATE
+            interval_days = VALUES(interval_days),
+            priority      = VALUES(priority),
+            reason        = VALUES(reason)
+    </insert>
+
+    <update id="closeAllPending">
+        UPDATE follow_up
+        SET status = 'done'
+        WHERE user_id = #{userId} AND indicator_id = #{indicatorId} AND status = 'pending'
+    </update>
+
+    <update id="closeStale">
+        UPDATE follow_up
+        SET status = 'done'
+        WHERE user_id = #{userId}
+          AND indicator_id = #{indicatorId}
+          AND status = 'pending'
+          AND last_exam_date &lt; #{lastExamDate}
+    </update>
+
+    <select id="findPending" resultType="com.superpatient.dto.FollowUpVO">
+        SELECT f.id,
+               f.indicator_id     AS indicatorId,
+               i.name             AS indicatorName,
+               i.unit             AS unit,
+               f.last_exam_date   AS lastExamDate,
+               f.interval_days    AS intervalDays,
+               f.due_date         AS dueDate,
+               DATEDIFF(CURDATE(), f.due_date) AS overdueDays,
+               f.priority,
+               f.reason,
+               f.status
+        FROM follow_up f
+        JOIN exam_indicator i ON i.id = f.indicator_id
+        WHERE f.user_id = #{userId} AND f.status = 'pending'
+        ORDER BY f.priority DESC, f.due_date ASC
+    </select>
+
+    <update id="updateStatus">
+        UPDATE follow_up
+        SET status = #{status}
+        WHERE id = #{id} AND user_id = #{userId}
+    </update>
+
+</mapper>
