@@ -50,9 +50,9 @@
         stripe
         @row-click="goRecord"
       >
-        <el-table-column label="日期" width="150">
+        <el-table-column label="日期" width="196">
           <template #default="{ row }">
-            <span class="num">{{ row.examDate?.replace('T', ' ') }}</span>
+            <span class="num nowrap">{{ fmtDate(row.examDate) }}</span>
           </template>
         </el-table-column>
         <el-table-column prop="categoryName" label="类型" width="110" />
@@ -148,6 +148,11 @@ function resetFilter() {
   fetchRecords()
 }
 
+function fmtDate(v) {
+  if (!v) return '—'
+  return v.replace('T', ' ').slice(0, 16)
+}
+
 function goRecord(row) { router.push('/records/' + row.id) }
 
 async function loadSummary() {
@@ -182,6 +187,7 @@ onMounted(async () => {
 .filter-item { width: 180px; }
 
 .ok { color: var(--text-hint); font-size: var(--font-sm); }
+.nowrap { white-space: nowrap; }
 .pagination-wrap { display: flex; justify-content: center; margin-top: 18px; }
 
 :deep(.el-table__row) { cursor: pointer; }

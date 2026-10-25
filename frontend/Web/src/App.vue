@@ -28,7 +28,7 @@
     </el-header>
 
     <el-container class="app-body">
-      <el-aside width="216px" class="app-aside">
+      <el-aside width="252px" class="app-aside">
         <el-menu :default-active="activeMenu" router class="side-menu">
           <li class="menu-label">日常</li>
           <el-menu-item index="/records">
@@ -147,7 +147,7 @@ function handleLogout() {
 .app-aside {
   background: var(--bg-white);
   border-right: 1px solid var(--border);
-  padding: 12px 10px;
+  padding: 14px 12px;
   overflow-x: hidden;
 }
 
