@@ -1,7 +1,9 @@
 <template>
   <div>
+    <PageHeader title="个人信息" subtitle="性别和出生日期会影响参考区间的匹配" />
+
     <el-card v-loading="loading">
-      <el-descriptions :column="2" border title="我的信息">
+      <el-descriptions :column="2" border>
         <el-descriptions-item label="昵称">{{ profile?.nickname || '-' }}</el-descriptions-item>
         <el-descriptions-item label="用户名">{{ profile?.username || '-' }}</el-descriptions-item>
         <el-descriptions-item label="性别">{{ profile?.genderText || '未设置' }}</el-descriptions-item>
@@ -100,6 +102,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { authApi } from '@/api/auth'
+import PageHeader from '@/components/PageHeader.vue'
 
 const router = useRouter()
 const auth = useAuthStore()

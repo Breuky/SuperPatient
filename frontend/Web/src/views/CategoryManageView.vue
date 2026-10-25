@@ -1,13 +1,12 @@
 <template>
   <div>
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>分类管理</span>
-          <el-button type="success" @click="openAdd">新增分类</el-button>
-        </div>
+    <PageHeader title="分类管理" subtitle="分类决定录入页和抽取候选池的分组">
+      <template #actions>
+        <el-button type="primary" @click="openAdd">新增分类</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <el-table v-loading="loading" :data="categories" stripe>
         <el-table-column prop="name" label="名称" />
         <el-table-column label="指标数" width="120">
@@ -51,6 +50,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { categoryApi } from '@/api/category'
+import PageHeader from '@/components/PageHeader.vue'
 
 const categories = ref([])
 const loading = ref(true)

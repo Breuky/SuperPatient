@@ -1,10 +1,10 @@
 <template>
   <div>
-    <div style="margin-bottom:16px">
-      <el-button text @click="$router.push('/records')">
-        <el-icon><ArrowLeft /></el-icon> 返回记录列表
-      </el-button>
-    </div>
+    <PageHeader
+      title="检查详情"
+      :subtitle="record ? fmtDate(record.examDate) + ' · ' + (record.categoryName || '') : ''"
+      back back-text="返回记录列表" back-to="/records"
+    />
 
     <el-card v-loading="loading">
       <template v-if="record">
@@ -111,6 +111,7 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { recordApi } from '@/api/record'
+import PageHeader from '@/components/PageHeader.vue'
 
 const route = useRoute()
 const router = useRouter()

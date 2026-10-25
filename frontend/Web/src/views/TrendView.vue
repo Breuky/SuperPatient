@@ -1,11 +1,12 @@
 <template>
   <div>
+    <PageHeader title="趋势分析" subtitle="同一指标的多次复查走势，参考区间按每次报告分段绘制" />
+
     <el-card v-loading="loading">
-      <div style="margin-bottom:16px">
-        <el-form-item label="选择指标" style="margin:0">
-          <el-select
+      <div class="filter-bar">
+        <el-select
             v-model="selectedId"
-            style="width:400px"
+            class="indicator-select"
             placeholder="选择指标"
             @change="loadTrend"
             :disabled="!trendable.length"
@@ -16,16 +17,18 @@
               :value="item.indicatorId"
             />
           </el-select>
-          <el-checkbox v-model="onlyFocused" style="margin-left:16px" @change="onFocusFilterChange">
-            只看关注指标
-          </el-checkbox>
+          <el-checkbox v-model="onlyFocused" @change="onFocusFilterChange">只看关注指标</el-checkbox>
           <span v-if="onlyFocused && !visibleTrendable.length" class="focus-empty">
             还没有关注的指标，去录入页点亮 ★
           </span>
-        </el-form-item>
       </div>
 
-      <el-empty v-if="!trendable.length" description="暂无可分析的指标数据" />
+      <EmptyState
+        v-if="!trendable.length && !loading"
+        icon="trend"
+        title="还没有可分析的指标"
+        description="至少录一条带数值的检查记录，才能画出趋势"
+      />
 
       <template v-if="trendData">
         <TrendChart :indicator="trendData.indicator" :points="trendData.points" />
@@ -68,6 +71,8 @@ import { ref, computed, onMounted } from 'vue'
 import { trendApi } from '@/api/trend'
 import { focusApi } from '@/api/focus'
 import TrendChart from '@/components/TrendChart.vue'
+import PageHeader from '@/components/PageHeader.vue'
+import EmptyState from '@/components/EmptyState.vue'
 
 const trendable = ref([])
 const trendData = ref(null)
@@ -131,7 +136,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.focus-empty { font-size: 12px; color: #909399; margin-left: 8px; }
+.filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-bottom: 16px; }
+.indicator-select { width: 400px; }
+.focus-empty { font-size: 12px; color: var(--text-hint); }
 .chart-hint {
   color: var(--text-hint, #999);
   font-size: 12px;

@@ -1,13 +1,10 @@
 <template>
   <div>
-    <div style="margin-bottom:16px">
-      <el-button text @click="$router.back()">
-        <el-icon><ArrowLeft /></el-icon> 返回
-      </el-button>
-      <span style="font-size:18px;font-weight:600;margin-left:8px">
-        {{ isEdit ? '编辑检查' : '新增检查' }}
-      </span>
-    </div>
+    <PageHeader
+      :title="isEdit ? '编辑检查' : '新增检查'"
+      :subtitle="isEdit ? '改动会覆盖这条记录原有的指标值' : '先选检查类型，再逐项填写；也可以上传化验单让模型识别'"
+      back
+    />
 
     <el-card v-loading="loading">
       <!-- Category selector -->
@@ -151,6 +148,7 @@ import { focusApi } from '@/api/focus'
 import { ElMessage } from 'element-plus'
 import IndicatorInput from '@/components/IndicatorInput.vue'
 import ExtractReviewDialog from '@/components/ExtractReviewDialog.vue'
+import PageHeader from '@/components/PageHeader.vue'
 import { now } from '@/utils/date'
 import { fileUrl } from '@/utils/file'
 

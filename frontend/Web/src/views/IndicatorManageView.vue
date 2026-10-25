@@ -1,13 +1,12 @@
 <template>
   <div>
-    <el-card>
-      <template #header>
-        <div class="card-header">
-          <span>指标管理</span>
-          <el-button type="success" @click="openAdd">新增我的指标</el-button>
-        </div>
+    <PageHeader title="指标管理" subtitle="公共指标由系统维护（只读），自己的指标随意增删改">
+      <template #actions>
+        <el-button type="primary" @click="openAdd">新增我的指标</el-button>
       </template>
+    </PageHeader>
 
+    <el-card>
       <div class="scope-bar">
         <el-radio-group v-model="scope" size="small">
           <el-radio-button value="mine">我的指标</el-radio-button>
@@ -206,6 +205,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { categoryApi } from '@/api/category'
 import { indicatorApi } from '@/api/indicator'
 import { referenceRangeApi } from '@/api/referenceRange'
+import PageHeader from '@/components/PageHeader.vue'
 
 const categories = ref([])
 const indicators = ref([])
