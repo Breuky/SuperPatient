@@ -114,14 +114,30 @@ export DASHSCOPE_API_KEY=sk-xxx
 # 可选：LLM_MODEL / LLM_BASE_URL
 ```
 
-### 5. 可选：启动 AI 解读的 Agent 服务
+### 5. 可选：AI 解读的 Agent 服务
+
+不启动也能用——解读会自动降级为规则摘要。三种启动方式：
+
+**A. 随 Spring Boot 自动拉起（开发推荐）**
 
 ```bash
-python agent/server.py --port 8001     # 仅需标准库，无第三方依赖
-export AGENT_ENABLED=true              # 后端启动前设置
+export AGENT_ENABLED=true
+export AGENT_AUTO_START=true          # 首次启动时顺带执行 python agent/server.py
+cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-不启动也能用——解读会自动降级为规则摘要。
+启动器有三道保护：8001 已被占用时不重复启动、脚本不存在时只打日志不影响主服务、应用关闭时连带杀掉子进程。
+
+**B. 手动起（多进程调试时用）**
+
+```bash
+python agent/server.py --port 8001    # 仅需标准库，无第三方依赖
+AGENT_ENABLED=true mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+**C. Windows 一键脚本**
+
+双击根目录的 `start-dev.bat`：后端（自动带 Agent）+ 前端各开一个窗口。
 
 ## 备份与恢复
 
