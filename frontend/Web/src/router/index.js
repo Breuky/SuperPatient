@@ -65,6 +65,12 @@ const routes = [
     name: 'IndicatorManage',
     component: () => import('@/views/IndicatorManageView.vue'),
     meta: { title: '指标管理' }
+  },
+  {
+    path: '/insight-logs',
+    name: 'InsightLogs',
+    component: () => import('@/views/InsightLogsView.vue'),
+    meta: { title: 'Agent 调用记录' }
   }
 ]
 
