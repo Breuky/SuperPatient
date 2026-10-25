@@ -114,57 +114,29 @@ export DASHSCOPE_API_KEY=sk-xxx
 # 可选：LLM_MODEL / LLM_BASE_URL
 ```
 
-### 5. 可选：AI 解读的 Agent 服务
+### 5. AI 解读的 Agent 服务（后端与 Agent 分别启动）
 
-不启动也能用——解读会自动降级为规则摘要。三种启动方式：
+不启动也能用——解读会自动降级为规则摘要。
 
-**A. 随 Spring Boot 自动拉起（开发推荐）**
-
-```bash
-export AGENT_ENABLED=true
-export AGENT_AUTO_START=true          # 首次启动时顺带执行 python agent/server.py
-cd backend && mvn spring-boot:run -Dspring-boot.run.profiles=local
-```
-
-启动器有三道保护：8001 已被占用时不重复启动、脚本不存在时只打日志不影响主服务、应用关闭时连带杀掉子进程。
-
-**B. 手动起（多进程调试时用）**
+常规做法是两个进程各跑各的，互不影响：
 
 ```bash
-python agent/server.py --port 8001    # 仅需标准库，无第三方依赖
-AGENT_ENABLED=true mvn spring-boot:run -Dspring-boot.run.profiles=local
+# ① Agent 服务（仅需标准库）
+python agent/server.py --port 8001
+
+# ② 后端（另开一个终端）
+cd backend && AGENT_ENABLED=true mvn spring-boot:run -Dspring-boot.run.profiles=local
 ```
 
-**C. Windows 一键脚本**
+分开启动的两个实际好处：
 
-双击根目录的 `start-dev.bat`：后端（自动带 Agent）+ 前端各开一个窗口。
+- **改 Agent 不用重启后端**：调提示词、加工具、改护栏，只重启 8001 那一个进程
+- **Agent 挂了不影响主业务**：Java 侧自动降级为规则摘要，记录、趋势、识别、提醒照常
 
-## 备份与恢复
+**可选便利**（本地图省事时才用，不要用在部署环境）：
 
-两样东西要一起备份：**数据库**和**报告照片**。只备份数据库会得到一堆指向不存在文件的记录。
-
-```bash
-# 1) 数据库（结构 + 数据，含中文，必须指定字符集）
-mysqldump -uroot -p --default-character-set=utf8mb4 \
-  --single-transaction super_patient > backup/super_patient-$(date +%F).sql
-
-# 2) 图片：默认落在 backend/uploads（可用 UPLOAD_DIR 覆盖）
-tar -czf backup/uploads-$(date +%F).tar.gz -C backend uploads
-```
-
-恢复到一个空库：
-
-```bash
-mysql -uroot -p -e "CREATE DATABASE super_patient CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
-mysql -uroot -p --default-character-set=utf8mb4 super_patient < backup/super_patient-2026-10-25.sql
-tar -xzf backup/uploads-2026-10-25.tar.gz -C backend
-```
-
-三个注意点：
-
-- `--default-character-set=utf8mb4` 不能省，否则中文指标名会变成 `???`
-- `--single-transaction` 避免备份时锁表（InnoDB 下不阻塞写入）
-- **备份文件含真实健康数据**，不要提交进仓库，也不要放到公开网盘
+- `AGENT_AUTO_START=true` 时，Spring Boot 启动阶段会顺带执行 `python agent/server.py`；8001 已被占用则跳过，应用关闭时连带杀掉子进程
+- 双击根目录 `start-dev.bat`：Agent、后端、前端各开一个窗口
 
 ## 几个设计点
 
