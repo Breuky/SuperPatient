@@ -50,13 +50,14 @@ def run_simple(api_key, evidence, model=None):
         {"role": "user", "content": json.dumps(evidence, ensure_ascii=False)},
     ]
     started = time.time()
-    msg = chat(api_key, messages, model=model)
+    msg, usage = chat(api_key, messages, model=model)
     result = _sanitize(parse_json_block(msg.get("content")))
     result.update({
         "mode": "simple",
         "turns": 1,
         "elapsed_ms": int((time.time() - started) * 1000),
         "trace": [],
+        "usage": usage,
     })
     return result
 
@@ -74,9 +75,11 @@ def run_agent(api_key, java_base, token, record_id, question, model=None):
     forced = False
     nudged = 0
     seen = set()
+    usage = _empty_usage()
 
     while turns < MAX_TURNS and (time.time() - started) < DEADLINE_SECONDS:
-        msg = chat(api_key, messages, tools=ToolBox.SCHEMAS, model=model)
+        msg, used = chat(api_key, messages, tools=ToolBox.SCHEMAS, model=model)
+        usage = _add_usage(usage, used)
         tool_calls = msg.get("tool_calls") or []
         if not tool_calls:
             # 一次工具都没调就想作答 = 凭空编数字，拽回来重试一次
@@ -95,6 +98,7 @@ def run_agent(api_key, java_base, token, record_id, question, model=None):
                 "trace": box.trace,
                 "forced_finish": forced,
                 "no_tool_used": not box.trace,
+                "usage": usage,
             })
             return result
 
@@ -134,7 +138,8 @@ def run_agent(api_key, java_base, token, record_id, question, model=None):
     forced = True
     messages.append({"role": "user", "content": "请基于已经取得的工具结果直接输出最终 JSON，不要再调用工具。"})
     try:
-        msg = chat(api_key, messages, model=model, timeout=15)
+        msg, used = chat(api_key, messages, model=model, timeout=15)
+        usage = _add_usage(usage, used)
         result = _sanitize(parse_json_block(msg.get("content")))
     except LlmError as e:
         result = {"summary": "生成失败", "highlights": [], "warnings": [str(e)]}
@@ -144,5 +149,20 @@ def run_agent(api_key, java_base, token, record_id, question, model=None):
         "elapsed_ms": int((time.time() - started) * 1000),
         "trace": box.trace,
         "forced_finish": forced,
+        "usage": usage,
     })
     return result
+
+
+def _empty_usage():
+    return {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+
+
+def _add_usage(total, used):
+    if not used:
+        return total
+    return {
+        "prompt_tokens": total["prompt_tokens"] + int(used.get("prompt_tokens") or 0),
+        "completion_tokens": total["completion_tokens"] + int(used.get("completion_tokens") or 0),
+        "total_tokens": total["total_tokens"] + int(used.get("total_tokens") or 0),
+    }

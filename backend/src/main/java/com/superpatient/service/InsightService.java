@@ -189,6 +189,7 @@ public class InsightService {
         vo.setDegraded(Boolean.TRUE.equals(response.get("degraded")));
         Object turns = response.get("turns");
         if (turns instanceof Number) vo.setTurns(((Number) turns).intValue());
+        vo.setUsage((Map<String, Object>) response.get("usage"));
 
         for (Object item : (List<Object>) response.getOrDefault("highlights", List.of())) {
             Map<String, Object> m = (Map<String, Object>) item;

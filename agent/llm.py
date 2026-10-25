@@ -60,7 +60,7 @@ def chat(api_key, messages, tools=None, model=None, base_url=None, timeout=25, t
     choices = payload.get("choices") or []
     if not choices:
         raise LlmError("模型没有返回 choices")
-    return choices[0].get("message") or {}
+    return choices[0].get("message") or {}, (payload.get("usage") or {})
 
 
 def parse_json_block(text):

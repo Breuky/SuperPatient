@@ -21,6 +21,8 @@ public class InsightVO {
     private List<TraceItem> trace = new ArrayList<>();
     private boolean degraded;
     private String disclaimer;
+    /** 模型 token 用量，仅用于对照实验 */
+    private Map<String, Object> usage;
 
     @Data
     public static class Highlight {

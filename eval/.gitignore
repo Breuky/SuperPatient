@@ -6,3 +6,4 @@ report.md
 # 各轮抽取的原始结果，同样含具体数值
 raw*/
 raw_summary.md
+agent_eval.json
