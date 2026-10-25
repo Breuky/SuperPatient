@@ -42,7 +42,7 @@
                   {{ row.value }} <small style="color:#999;font-weight:400;font-size:12px">{{ trendData.indicator.unit }}</small>
                 </span>
                 <el-tag v-if="row.isAbnormal === 1" type="danger" style="margin-left:8px">↑ 偏高</el-tag>
-                <el-tag v-else-if="row.isAbnormal === 2" type="primary" style="margin-left:8px">↓ 偏低</el-tag>
+                <el-tag v-else-if="row.isAbnormal === 2" class="tag-low" style="margin-left:8px">↓ 偏低</el-tag>
               </template>
             </el-table-column>
             <el-table-column label="参考区间" min-width="200" align="center">

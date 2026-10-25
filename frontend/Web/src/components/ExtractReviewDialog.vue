@@ -46,7 +46,7 @@
         <el-table-column label="判定" width="80" align="center">
           <template #default="{ row }">
             <el-tag v-if="abnormalOf(row) === 1" type="danger" size="small">偏高</el-tag>
-            <el-tag v-else-if="abnormalOf(row) === 2" type="primary" size="small">偏低</el-tag>
+            <el-tag v-else-if="abnormalOf(row) === 2" class="tag-low" size="small">偏低</el-tag>
             <el-tag v-else type="info" size="small">正常</el-tag>
           </template>
         </el-table-column>

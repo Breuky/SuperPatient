@@ -1,45 +1,70 @@
 <template>
   <div class="auth-page">
-    <el-card class="auth-card">
-      <div class="logo">
-        <div class="logo-icon">SP</div>
-        <h1>SuperPatient</h1>
-        <p>长期记录你的检查指标</p>
+    <aside class="auth-brand">
+      <div class="brand-top">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none"
+               stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 12h4l2.2-6 4 12 2.2-6H21" />
+          </svg>
+        </div>
+        <span>SuperPatient</span>
       </div>
 
-      <el-form @submit.prevent="handleLogin" label-position="top">
-        <el-form-item label="用户名">
-          <el-input
-            v-model="username"
-            placeholder="请输入用户名"
-            autocomplete="username"
-            @keyup.enter="handleLogin"
-          />
-        </el-form-item>
-        <el-form-item label="密码">
-          <el-input
-            v-model="password"
-            type="password"
-            show-password
-            placeholder="请输入密码"
-            autocomplete="current-password"
-            @keyup.enter="handleLogin"
-          />
-        </el-form-item>
-        <el-form-item>
-          <el-button type="success" @click="handleLogin" :loading="auth.loading" style="width:100%">
-            {{ auth.loading ? '登录中...' : '登录' }}
-          </el-button>
-        </el-form-item>
-      </el-form>
-
-      <p v-if="error" class="error-msg">{{ error }}</p>
-
-      <div class="foot">
-        <router-link to="/register">还没有账号？注册</router-link>
+      <div>
+        <h1>把化验单照片<br />变成看得懂的趋势</h1>
+        <p class="tagline">同一个指标在不同医院、不同年份的参考区间都不一样。这里把它们对齐，画成一条能对比的线。</p>
+        <div class="brand-points">
+          <div class="brand-point"><i>1</i><span>拍照识别，逐项校对后入库，模型不直接写数据</span></div>
+          <div class="brand-point"><i>2</i><span>参考区间随每次报告分段保存，异常值一眼看到</span></div>
+          <div class="brand-point"><i>3</i><span>记录只属于你，报告照片按账号隔离</span></div>
+        </div>
       </div>
-      <p class="hint">演示账号：demo / demo1234</p>
-    </el-card>
+
+      <div class="brand-foot">演示环境 · 不含真实个人健康信息</div>
+    </aside>
+
+    <main class="auth-panel">
+      <div class="auth-card">
+        <h2>欢迎回来</h2>
+        <p class="sub">登录后继续记录你的检查指标</p>
+
+        <el-form @submit.prevent="handleLogin" label-position="top">
+          <el-form-item label="用户名">
+            <el-input
+              v-model="username"
+              size="large"
+              placeholder="请输入用户名"
+              autocomplete="username"
+              @keyup.enter="handleLogin"
+            />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input
+              v-model="password"
+              size="large"
+              type="password"
+              show-password
+              placeholder="请输入密码"
+              autocomplete="current-password"
+              @keyup.enter="handleLogin"
+            />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" size="large" @click="handleLogin" :loading="auth.loading" style="width:100%">
+              {{ auth.loading ? '登录中...' : '登录' }}
+            </el-button>
+          </el-form-item>
+        </el-form>
+
+        <p v-if="error" class="error-msg">{{ error }}</p>
+
+        <div class="foot">
+          还没有账号？<router-link to="/register">创建一个</router-link>
+        </div>
+        <p class="demo-hint">演示账号：demo / demo1234</p>
+      </div>
+    </main>
   </div>
 </template>
 
@@ -70,24 +95,6 @@ async function handleLogin() {
 </script>
 
 <style scoped>
-.auth-page {
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #07C160 0%, #06AD56 100%);
-}
-.auth-card { width: 400px; }
-.logo { text-align: center; margin-bottom: 24px; }
-.logo-icon {
-  width: 56px; height: 56px; border-radius: 16px;
-  background: var(--green); color: #fff; font-size: 20px; font-weight: 700;
-  display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;
-}
-.logo h1 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
-.logo p { font-size: 13px; color: #999; }
-.error-msg { color: var(--red); font-size: 13px; text-align: center; margin-top: 8px; }
-.foot { text-align: center; font-size: 13px; margin-top: 4px; }
-.foot a { color: var(--green); }
-.hint { font-size: 12px; color: #ccc; text-align: center; margin-top: 12px; }
+.brand-foot { font-size: var(--font-xs); color: rgba(255, 255, 255, 0.62); letter-spacing: 0.02em; }
+.demo-hint { margin-top: 12px; font-size: var(--font-xs); color: var(--text-disabled); text-align: center; }
 </style>
