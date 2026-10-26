@@ -12,6 +12,8 @@ import org.springframework.web.method.HandlerMethod;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import java.time.Duration;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Set;
 
 /**
@@ -41,8 +43,12 @@ public class RateLimitInterceptor implements HandlerInterceptor {
         }
         Set<RateLimit> annotations = AnnotatedElementUtils.findMergedRepeatableAnnotations(
                 method.getMethod(), RateLimit.class);
-        log.debug("限流检查 {} -> {} 条规则", request.getRequestURI(), annotations.size());
-        for (RateLimit rule : annotations) {
+        // 窗口短的先判：被「每分钟」拦下时，不要再去消耗「每天」的额度
+        List<RateLimit> rules = annotations.stream()
+                .sorted(Comparator.comparingLong(rule -> Duration.of(rule.window(), rule.unit().toChronoUnit()).toMillis()))
+                .toList();
+        log.debug("限流检查 {} -> {} 条规则", request.getRequestURI(), rules.size());
+        for (RateLimit rule : rules) {
             String key = "rl:" + rule.scope() + ":" + rule.dimension().name().toLowerCase() + ":" + subject(rule.dimension(), request);
             Duration window = Duration.of(rule.window(), rule.unit().toChronoUnit());
             RateLimiter.Decision decision = rateLimiter.check(key, rule.limit(), window, rule.failOpen());
