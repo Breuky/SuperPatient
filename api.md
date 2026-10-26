@@ -598,6 +598,23 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
 
 ---
 
+## 限流
+
+超出限额时返回 **HTTP 429**，并带 `Retry-After`（秒）：
+
+```json
+{ "code": 0, "msg": "操作过于频繁，请 60 秒后再试" }
+```
+
+| 接口 | 维度 | 限额 |
+|---|---|---|
+| POST /auth/login | IP | 10 次 / 分钟 |
+| POST /auth/login | 账号 | 5 次 / 10 分钟（成功清零） |
+| POST /auth/register | IP | 3 次 / 小时 |
+| POST /parse/report | 用户 | 20 次 / 天、3 次 / 分钟 |
+| POST /insights/report | 用户 | 100 次 / 天、10 次 / 分钟 |
+| POST /files/upload | 用户 | 30 次 / 天 |
+
 ## 接口汇总
 
 | 方法 | 路径 | 说明 | 认证 |

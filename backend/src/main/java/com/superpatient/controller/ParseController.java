@@ -5,6 +5,8 @@ import com.superpatient.dto.ExtractResultVO;
 import com.superpatient.exception.BusinessException;
 import com.superpatient.pojo.Result;
 import com.superpatient.service.ReportExtractionService;
+import com.superpatient.ratelimit.Dimension;
+import com.superpatient.ratelimit.RateLimit;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +30,10 @@ public class ParseController {
 
     @Operation(summary = "解析化验单图片",
             description = "返回候选指标与未匹配项，前端校对后走 POST /api/records 落库")
+    @RateLimit(scope = "parse-daily", limit = 20, window = 1,
+            unit = java.util.concurrent.TimeUnit.DAYS, failOpen = false)
+    @RateLimit(scope = "parse-burst", limit = 3, window = 1,
+            unit = java.util.concurrent.TimeUnit.MINUTES, failOpen = false)
     @PostMapping("/report")
     public Result parse(@RequestBody ExtractRequest request) {
         if (request.getImageUrl() == null || request.getImageUrl().isBlank()) {

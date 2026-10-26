@@ -9,6 +9,7 @@ import com.superpatient.exception.BusinessException;
 import com.superpatient.mapper.RecordMapper;
 import com.superpatient.mapper.UserMapper;
 import com.superpatient.mapper.ValueMapper;
+import com.superpatient.ratelimit.RateLimiter;
 import com.superpatient.util.CurrentHolder;
 import com.superpatient.util.JwtUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -25,7 +26,11 @@ import java.time.LocalDate;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,13 +40,17 @@ class AuthServiceTest {
     @Mock private RecordMapper recordMapper;
     @Mock private ValueMapper valueMapper;
     @Mock private JwtUtils jwtUtils;
+    @Mock private RateLimiter rateLimiter;
 
     private final PasswordEncoder encoder = new BCryptPasswordEncoder();
     private AuthService authService;
 
     @BeforeEach
     void setUp() {
-        authService = new AuthService(userMapper, recordMapper, valueMapper, jwtUtils, encoder);
+        authService = new AuthService(userMapper, recordMapper, valueMapper, jwtUtils, encoder, rateLimiter);
+        // 限流器默认放行，登录用例只测业务逻辑；限流本身由 LocalWindowCounterTest 覆盖
+        lenient().when(rateLimiter.check(anyString(), anyInt(), any(), anyBoolean()))
+                .thenReturn(new RateLimiter.Decision(true, 0));
     }
 
     @AfterEach

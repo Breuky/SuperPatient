@@ -6,6 +6,8 @@ import com.superpatient.exception.BusinessException;
 import com.superpatient.mapper.RecordMapper;
 import com.superpatient.mapper.UserMapper;
 import com.superpatient.mapper.ValueMapper;
+import com.superpatient.ratelimit.RateLimitExceededException;
+import com.superpatient.ratelimit.RateLimiter;
 import com.superpatient.util.CurrentHolder;
 import com.superpatient.util.JwtUtils;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -34,6 +37,7 @@ public class AuthService {
     private final ValueMapper valueMapper;
     private final JwtUtils jwtUtils;
     private final PasswordEncoder passwordEncoder;
+    private final RateLimiter rateLimiter;
 
     @Transactional
     public LoginVO register(RegisterRequest request) {
@@ -66,11 +70,20 @@ public class AuthService {
             throw new BusinessException("请输入密码");
         }
 
+        // 同一账号 10 分钟内最多 5 次尝试；登录成功清零。
+        // 提示语与「密码错误」保持一致，不泄露账号是否存在。
+        String accountKey = "rl:login-account:" + username;
+        RateLimiter.Decision decision = rateLimiter.check(accountKey, 5, Duration.ofMinutes(10), true);
+        if (!decision.allowed()) {
+            throw new RateLimitExceededException(decision.retryAfterSeconds());
+        }
+
         User user = userMapper.findByUsername(username);
         if (user == null || user.getPasswordHash() == null
                 || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             throw new BusinessException("用户名或密码错误");
         }
+        rateLimiter.reset(accountKey);
         return issueToken(user);
     }
 

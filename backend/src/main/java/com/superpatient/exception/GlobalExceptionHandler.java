@@ -21,6 +21,16 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 触发限流返回真正的 429，并带 Retry-After，前端可据此提示等待时间。
+     */
+    @ExceptionHandler(com.superpatient.ratelimit.RateLimitExceededException.class)
+    public ResponseEntity<Result> handleRateLimit(com.superpatient.ratelimit.RateLimitExceededException e) {
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(e.getRetryAfterSeconds()))
+                .body(Result.error(e.getMessage()));
+    }
+
+    /**
      * 路径不存在时返回真正的 404，而不是被兜底成 200。
      */
     @ExceptionHandler(NoResourceFoundException.class)

@@ -3,6 +3,7 @@ package com.superpatient.controller;
 import com.superpatient.dto.UploadVO;
 import com.superpatient.pojo.Result;
 import com.superpatient.service.FileService;
+import com.superpatient.ratelimit.RateLimit;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -26,6 +27,7 @@ public class FileController {
     private final FileService fileService;
 
     @Operation(summary = "上传报告照片", description = "支持 jpg/png，最大 10MB")
+    @RateLimit(scope = "upload-daily", limit = 30, window = 1, unit = java.util.concurrent.TimeUnit.DAYS)
     @PostMapping("/upload")
     public Result upload(
             @Parameter(description = "图片文件") @RequestParam("file") MultipartFile file,

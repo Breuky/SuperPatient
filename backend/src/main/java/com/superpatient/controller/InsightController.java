@@ -3,6 +3,7 @@ package com.superpatient.controller;
 import com.superpatient.dto.InsightRequest;
 import com.superpatient.dto.InsightVO;
 import com.superpatient.pojo.Result;
+import com.superpatient.ratelimit.RateLimit;
 import com.superpatient.entity.InsightLog;
 import com.superpatient.service.InsightService;
 import com.superpatient.util.CurrentHolder;
@@ -28,6 +29,8 @@ public class InsightController {
 
     @Operation(summary = "解读一次检查",
             description = "mode=simple 证据包单次生成；mode=agent 由模型自行调用只读工具取数")
+    @RateLimit(scope = "insight-daily", limit = 100, window = 1, unit = java.util.concurrent.TimeUnit.DAYS, failOpen = false)
+    @RateLimit(scope = "insight-burst", limit = 10, window = 1, unit = java.util.concurrent.TimeUnit.MINUTES, failOpen = false)
     @PostMapping("/report")
     public Result report(@RequestBody InsightRequest request) {
         InsightVO vo = insightService.explain(request);
