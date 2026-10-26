@@ -59,15 +59,14 @@ app:
 
 mybatis:
   configuration:
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
     map-underscore-to-camel-case: true
   mapper-locations: classpath:mapper/*.xml
   type-aliases-package: com.superpatient.entity
 
 logging:
   level:
-    com.superpatient: debug
-    org.springframework.jdbc.support.JdbcTransactionManager: debug
+    # 生产默认 INFO；SQL 与 debug 只在 local profile 打开（见 application-local.yml）
+    com.superpatient: info
 
 springdoc:
   swagger-ui:

@@ -86,8 +86,8 @@ public class ReportExtractionService {
         }
 
         String raw = llmVisionClient.extract(bytes, mimeType, prompt);
-        log.info("抽取原始输出({}): {}", llmVisionClient.displayName(),
-                raw.length() > 500 ? raw.substring(0, 500) + "..." : raw);
+        // 原始输出里可能有姓名、医院、指标值，只记长度，不落内容
+        log.info("抽取完成: engine={}, chars={}", llmVisionClient.displayName(), raw.length());
 
         return assemble(raw, pool, categoryId, ctx, lastValues);
     }
