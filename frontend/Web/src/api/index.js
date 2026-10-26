@@ -2,8 +2,9 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: '/api',
-  timeout: 15000,
-  headers: { 'Content-Type': 'application/json' }
+  timeout: 15000
+  // 不设全局 Content-Type：普通对象由 axios 自动用 application/json，
+  // FormData 必须让它自动带 boundary，手写 multipart/form-data 反而会坏
 })
 
 api.interceptors.request.use((config) => {

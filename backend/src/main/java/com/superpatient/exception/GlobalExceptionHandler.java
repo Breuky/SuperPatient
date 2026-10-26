@@ -38,6 +38,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Result.error("资源不存在"));
     }
 
+    /**
+     * 请求体格式不对（例如把 multipart 接口用 JSON 调）：返回 415 并说清楚要什么，
+     * 而不是被兜底成「服务器内部错误」。
+     */
+    @ExceptionHandler(org.springframework.web.HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<Result> handleMediaType(org.springframework.web.HttpMediaTypeNotSupportedException e) {
+        String expected = e.getSupportedMediaTypes().isEmpty()
+                ? "" : "，需要 " + e.getSupportedMediaTypes().get(0).toString();
+        return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .body(Result.error("请求格式不正确" + expected));
+    }
+
     @ExceptionHandler(Exception.class)
     public Result handleException(Exception e) {
         log.error("未处理异常", e);
