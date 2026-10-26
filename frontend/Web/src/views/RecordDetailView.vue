@@ -44,7 +44,18 @@
                   :title="(m.data.warnings && m.data.warnings[0]) || '模型不可用，已降级为规则摘要'"
                 />
 
-                <div v-if="m.data.outOfScope" class="scope-block">
+                <div v-if="m.data.offTopic" class="scope-block">
+                  <div class="scope-title">这个问题不在我的范围内</div>
+                  <p class="scope-note">{{ m.data.summary }}</p>
+                  <div class="scope-actions">
+                    <el-tag
+                      v-for="q in ((m.data.suggestions && m.data.suggestions.length) ? m.data.suggestions : suggestions)"
+                      :key="q" class="chip" @click="ask(q)"
+                    >{{ q }}</el-tag>
+                  </div>
+                </div>
+
+                <div v-else-if="m.data.outOfScope" class="scope-block">
                   <div class="scope-title">这个问题我答不了</div>
                   <p class="scope-note">
                     {{ m.data.scopeNote || '它涉及病因、危害、严重程度或治疗选择，属于医学判断；我只能提供数据，不给结论。' }}
@@ -56,7 +67,7 @@
                     >{{ q }}</el-tag>
                   </div>
                 </div>
-                <p v-else class="ins-summary">{{ m.data.summary }}</p>
+                <p v-if="!m.data.offTopic && !m.data.outOfScope" class="ins-summary">{{ m.data.summary }}</p>
 
                 <div v-if="m.data.outOfScope" class="data-head">
                   {{ (m.data.highlights || []).length

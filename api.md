@@ -565,6 +565,8 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
     "summary": "最近一次检查是2026年06月15日，在市第一人民医院做的CT检查。",
     "highlights": [{ "indicator": "CT", "text": "…", "basis": "list_records" }],
     "warnings": [],
+    "offTopic": false,
+    "suggestions": [],
     "outOfScope": false,
     "scopeNote": "",
     "turns": 2,
@@ -575,6 +577,8 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
   }
 }
 ```
+
+`offTopic=true` 表示问题与检查数据无关（天气、写诗、编程等），此时不调用模型、不返回数值，`suggestions` 给出可点的示例问题。
 
 `outOfScope=true` 表示用户问的是病因、危害、要不要治疗这类医学判断，此时只返回与问题相关的事实数据，`scopeNote` 说明系统能提供什么。
 

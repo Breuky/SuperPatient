@@ -9,6 +9,7 @@ import time
 
 from llm import LlmError, chat, parse_json_block
 from prompts import FORBIDDEN, SYSTEM_AGENT, SYSTEM_SIMPLE
+from scope import OFF_TOPIC_REPLY, OFF_TOPIC_SUGGESTIONS, is_off_topic
 from tools import ToolBox
 
 MAX_TURNS = 6
@@ -67,6 +68,7 @@ def _sanitize(parsed):
         "warnings": warnings,
         "out_of_scope": out_of_scope,
         "scope_note": scope_note,
+        "off_topic": bool(parsed.get("off_topic")),
     }
 
 
@@ -92,6 +94,23 @@ def run_simple(api_key, evidence, model=None, llm_base=None):
 def run_agent(api_key, java_base, token, record_id, question, model=None, history=None,
               llm_base=None):
     """工具循环：模型自己决定调用哪些工具、调几次"""
+    # 与检查数据无关的问题：不调模型、不查数据，直接说清楚能答什么
+    if is_off_topic(question):
+        return {
+            "mode": "agent",
+            "summary": OFF_TOPIC_REPLY,
+            "highlights": [],
+            "warnings": [],
+            "suggestions": list(OFF_TOPIC_SUGGESTIONS),
+            "off_topic": True,
+            "turns": 0,
+            "elapsed_ms": 0,
+            "trace": [],
+            "usage": _empty_usage(),
+            "forced_finish": False,
+            "no_tool_used": False,
+        }
+
     box = ToolBox(java_base, token)
 
     # 之前的问答作为上下文；追问（「那上次呢」）必须带上，否则模型不知道指代什么

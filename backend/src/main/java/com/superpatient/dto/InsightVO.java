@@ -19,6 +19,10 @@ public class InsightVO {
     private boolean outOfScope;
     /** 越界时说明「我能提供什么」 */
     private String scopeNote;
+    /** 问题与检查数据完全无关（天气、写诗、编程…） */
+    private boolean offTopic;
+    /** 无关时可点的示例问题 */
+    private List<String> suggestions = new ArrayList<>();
     /** agent 模式下了几轮 */
     private Integer turns;
     /** 每次工具调用的轨迹，agent 模式才有 */
