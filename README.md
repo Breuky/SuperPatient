@@ -244,7 +244,7 @@ cd backend && AGENT_ENABLED=true mvn spring-boot:run -Dspring-boot.run.profiles=
 | **深读（agent）** | 模型自己调工具取数 | 1-6 次工具 + 生成 | 2-8s | **默认路径** |
 | 快速（simple） | Java 组装好的证据包 | 1 次生成 | ~7s | 兜底：服务不可用或成本敏感时 |
 
-agent 模式只拿到 `recordId` 和问题，可用五个只读工具：`find_indicator` / `list_records` / `get_record` / `get_trend` / `get_reference_rules`。每次调用都留痕到 `insight_log`（问题、轮数、工具次数、token、耗时、是否降级），可用 `GET /api/insights/logs` 回看。同一份代码，问法不同路径就不同：
+agent 模式只拿到 `recordId` 和问题，可用六个只读工具：`find_indicator` / `overview` / `list_records` / `get_record` / `get_trend` / `get_reference_rules`。每次调用都留痕到 `insight_log`（问题、轮数、工具次数、token、耗时、是否降级），可用 `GET /api/insights/logs` 回看。同一份代码，问法不同路径就不同：
 
 ```
 「这次有哪些指标超出参考区间」→ get_record                      2 轮 3.3s

@@ -38,6 +38,14 @@ class ToolBox:
         {
             "type": "function",
             "function": {
+                "name": "overview",
+                "description": "一次拿到当前用户全部记录的宏观统计：总次数、时间范围、各分类次数、异常最多的指标。问「一共查过几次」「哪项异常最多」「最早/最近一次」时先用它，不要靠 list_records 数条数。",
+                "parameters": {"type": "object", "properties": {}, "required": []},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
                 "name": "get_record",
                 "description": "取某次检查的全部指标值、单位、参考区间与异常标记。问「这次/本次」的异常项、具体数值时先用它。",
                 "parameters": {
@@ -140,6 +148,9 @@ class ToolBox:
             elif i.get("indicatorId") in hits:
                 hits[i["indicatorId"]]["has_history"] = True
         return list(hits.values())[:10]
+
+    def _overview(self):
+        return self._get("/api/statistics/overview") or {}
 
     def _list_records(self, limit=10):
         data = self._get("/api/records?page=1&pageSize=%d" % int(limit or 10)) or {}

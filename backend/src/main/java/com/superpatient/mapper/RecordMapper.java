@@ -18,4 +18,12 @@ public interface RecordMapper {
     int update(ExamRecord record);
     int deleteById(@Param("id") Long id);
     int countByUserId(@Param("userId") Long userId);
+
+    /** 总数、时间范围、指标条数、异常条数 */
+    com.superpatient.dto.OverviewVO overviewBase(@Param("userId") Long userId);
+
+    java.util.List<com.superpatient.dto.OverviewVO.CategoryCount> countByCategory(@Param("userId") Long userId);
+
+    java.util.List<com.superpatient.dto.OverviewVO.IndicatorCount> topAbnormal(@Param("userId") Long userId,
+                                                                             @Param("limit") int limit);
 }

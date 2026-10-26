@@ -70,4 +70,38 @@
         SELECT COUNT(*) FROM exam_record WHERE user_id = #{userId}
     </select>
 
+    <select id="overviewBase" resultType="com.superpatient.dto.OverviewVO">
+        SELECT COUNT(*)        AS totalRecords,
+               MIN(r.exam_date) AS firstDate,
+               MAX(r.exam_date) AS lastDate,
+               (SELECT COUNT(*) FROM exam_value v
+                  JOIN exam_record x ON x.id = v.record_id
+                 WHERE x.user_id = #{userId} AND v.value_decimal IS NOT NULL) AS totalValues,
+               (SELECT COUNT(*) FROM exam_value v
+                  JOIN exam_record x ON x.id = v.record_id
+                 WHERE x.user_id = #{userId} AND v.is_abnormal != 0)           AS abnormalValues
+        FROM exam_record r
+        WHERE r.user_id = #{userId}
+    </select>
+
+    <select id="countByCategory" resultType="com.superpatient.dto.OverviewVO$CategoryCount">
+        SELECT c.name AS name, COUNT(*) AS count
+        FROM exam_record r
+        JOIN exam_category c ON c.id = r.category_id
+        WHERE r.user_id = #{userId}
+        GROUP BY c.id, c.name
+        ORDER BY count DESC
+    </select>
+
+    <select id="topAbnormal" resultType="com.superpatient.dto.OverviewVO$IndicatorCount">
+        SELECT i.name AS name, i.unit AS unit, COUNT(*) AS times
+        FROM exam_value v
+        JOIN exam_record r ON r.id = v.record_id
+        JOIN exam_indicator i ON i.id = v.indicator_id
+        WHERE r.user_id = #{userId} AND v.is_abnormal != 0
+        GROUP BY i.id, i.name, i.unit
+        ORDER BY times DESC
+        LIMIT #{limit}
+    </select>
+
 </mapper>

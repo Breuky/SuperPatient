@@ -53,6 +53,7 @@ Windows 下 `HTTPServer.allow_reuse_address=True` 会让**两个进程同时绑�
 | 工具 | 用途 |
 |---|---|
 | `find_indicator(keyword)` | 「血脂」→ 具体指标 id；同时查可选指标与「有历史但已停用」的指标 |
+| `overview()` | 全部记录的宏观统计：次数、时间范围、分类计数、异常 Top5 |
 | `get_record(record_id)` | 本次各项值、单位、参考区间、异常标记 |
 | `get_trend(indicator_id, limit)` | 该指标历史序列 |
 | `get_reference_rules(indicator_id)` | 性别/年龄区间规则 |
