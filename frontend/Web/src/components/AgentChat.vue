@@ -117,10 +117,11 @@ const chatBox = ref(null)
 
 const scopeText = computed(() => props.recordId ? '本次记录' : '全部记录')
 const suggestions = computed(() => props.recordId
-  ? ['这次有哪几项超出参考区间？', '和上次比有什么变化？', '我的血糖最近怎么样？']
+  // 数值和异常标记页面上已经有了，这里引导问「对比 / 来源 / 缺项」这类看不出来的
+  ? ['和上次比哪些项变差了？', '这几项的参考区间为什么和上次不一样？', '这次哪些项没查？']
   : ['我一共查过几次检查？', '哪项指标有问题？', '我的血糖最近怎么样？'])
 const emptyHintText = computed(() => props.emptyHint || (props.recordId
-  ? '问点什么，模型会自己决定查本次结果、历史趋势还是区间规则。'
+  ? '数值和异常标记页面上已经能看到。这里更适合问对比和来源，比如「和上次比哪些项变差了」。'
   : '可以问全部记录：一共查过几次、哪项一直偏高、某个指标这几年怎么变。'))
 
 const chatKey = computed(() => 'insight-chat-' + (props.recordId ?? 'all'))

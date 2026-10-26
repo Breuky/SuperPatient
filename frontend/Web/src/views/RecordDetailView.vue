@@ -16,7 +16,7 @@
           <el-descriptions-item v-if="record.notes" label="备注" :span="2">{{ record.notes }}</el-descriptions-item>
         </el-descriptions>
 
-        <AgentChat v-if="record" :record-id="record.id" style="margin-bottom:16px" />
+        <AgentChat v-if="record" :record-id="record.id" title="这次检查 · 追问" style="margin-bottom:16px" />
 
         <el-card style="margin-bottom:16px">
           <template #header>
