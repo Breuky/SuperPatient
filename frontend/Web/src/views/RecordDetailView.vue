@@ -39,16 +39,31 @@
               <div v-if="m.role === 'user'" class="bubble user">{{ m.text }}</div>
               <div v-else class="bubble assistant">
                 <el-alert
-                  v-if="m.data.outOfScope"
-                  type="info" :closable="false" show-icon style="margin-bottom:10px"
-                  :title="m.data.scopeNote || '这个问题涉及医学判断，我这边只能提供与它相关的数据'"
-                />
-                <el-alert
                   v-if="m.data.degraded"
                   type="warning" :closable="false" show-icon style="margin-bottom:10px"
                   :title="(m.data.warnings && m.data.warnings[0]) || '模型不可用，已降级为规则摘要'"
                 />
-                <p class="ins-summary">{{ m.data.summary }}</p>
+
+                <div v-if="m.data.outOfScope" class="scope-block">
+                  <div class="scope-title">这个问题我答不了</div>
+                  <p class="scope-note">
+                    {{ m.data.scopeNote || '它涉及病因、危害、严重程度或治疗选择，属于医学判断；我只能提供数据，不给结论。' }}
+                  </p>
+                  <div class="scope-actions">
+                    <el-tag
+                      v-for="q in scopeSuggestions(m)" :key="q"
+                      class="chip" @click="ask(q)"
+                    >{{ q }}</el-tag>
+                  </div>
+                </div>
+                <p v-else class="ins-summary">{{ m.data.summary }}</p>
+
+                <div v-if="m.data.outOfScope" class="data-head">
+                  {{ (m.data.highlights || []).length
+                      ? '与你问题相关的数据'
+                      : ((m.data.warnings && m.data.warnings[0]) || '这次记录里没有与它直接相关的指标') }}
+                </div>
+
                 <div v-for="(h, j) in (m.data.highlights || [])" :key="j" class="ins-item">
                   <span class="ins-name">{{ h.indicator }}</span>
                   <span class="ins-text">{{ h.text }}</span>
@@ -216,6 +231,16 @@ function restoreChat() {
 }
 
 /** 把一条解读压成纯文本，作为下一轮的上下文 */
+/** 越界时给「能做什么」的可点选项，把死路变成下一步 */
+function scopeSuggestions(m) {
+  const ind = (m.data.highlights || [])[0] && m.data.highlights[0].indicator
+  const list = []
+  if (ind) list.push(ind + '最近几次怎么样？')
+  list.push('这次有哪几项超出参考区间？')
+  if (ind) list.push(ind + '的参考区间是多少？')
+  return list
+}
+
 function flatten(data) {
   const parts = [data.summary || '']
   for (const h of data.highlights || []) {
@@ -363,6 +388,21 @@ onMounted(async () => {
 }
 
 .ins-summary { font-size: var(--font-sm); line-height: 1.7; color: var(--text-primary); }
+
+.scope-block {
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--bg-hover, #f7f8fa);
+  border-left: 3px solid var(--border-strong, #c8c9cc);
+}
+.scope-title { font-size: var(--font-sm); font-weight: 600; color: var(--text-primary); }
+.scope-note { margin-top: 4px; font-size: var(--font-sm); line-height: 1.65; color: var(--text-secondary); }
+.scope-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.data-head {
+  margin: 12px 0 2px;
+  font-size: var(--font-xs);
+  color: var(--text-hint);
+}
 .ins-item { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border-light); }
 .ins-name { font-weight: 600; white-space: nowrap; font-size: var(--font-sm); }
 .ins-text { color: var(--text-secondary); font-size: var(--font-sm); }
