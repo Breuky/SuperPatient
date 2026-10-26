@@ -90,7 +90,11 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
     usage = _empty_usage()
 
     while turns < MAX_TURNS and (time.time() - started) < DEADLINE_SECONDS:
-        msg, used = chat(api_key, messages, tools=ToolBox.SCHEMAS, model=model)
+        # 首轮还没取到任何数据时强制调用工具：不依赖模型"愿不愿意查"，
+        # 也就不需要在提示词里写「哪类问题用哪个工具」
+        choice = "required" if (require_tools and not box.trace) else "auto"
+        msg, used = chat(api_key, messages, tools=ToolBox.SCHEMAS, model=model,
+                         tool_choice=choice)
         usage = _add_usage(usage, used)
         tool_calls = msg.get("tool_calls") or []
         if not tool_calls:

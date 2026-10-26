@@ -26,6 +26,8 @@ AGENT_ENABLED=true mvn spring-boot:run
 | `POST /agent/summarize` | simple | Java 已经组装好证据包，这里只做一次生成，0 次工具调用 |
 | `POST /agent/report-insight` | agent | 只拿到 `recordId` + 问题，模型自己决定查什么 |
 
+工具选择只发生在 `tools` 参数这一层：能力由 schema 声明，"什么时候用"写在各自的 `description` 里。系统提示词只写目标、硬约束和输出格式，**不写"哪类问题用哪个工具"**——那样等于把规划写死。是否必须先取数由代码强制（首轮 `tool_choice=required`），不靠提示词提醒。
+
 ## 可用的只读工具
 
 | 工具 | 用途 |
@@ -41,7 +43,8 @@ AGENT_ENABLED=true mvn spring-boot:run
 |---|---|
 | 最大轮数 6 / 超时 20s | 超了强制收尾 |
 | 重复调用拦截 | 同样的工具+参数第二次直接回 error，逼模型换策略 |
-| 未调用工具即作答 | 判定为编数据，返回失败让 Java 降级为规则摘要 |
+| 首轮强制取数 | trace 为空时 `tool_choice=required`，拿到数据后回到 `auto`；不依赖模型"愿不愿意查" |
+| 未调用工具即作答 | 连续两次拽回仍不调工具，判定为编数据，返回失败让 Java 降级为规则摘要 |
 | 医疗建议过滤 | 命中「建议/治疗/用药/剂量/确诊…」的句子直接丢弃 |
 | 免责声明 | 由 Java 拼接，模型无权生成 |
 

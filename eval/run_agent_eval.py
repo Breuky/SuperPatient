@@ -80,13 +80,16 @@ def main():
     ap.add_argument("--user", default="demo")
     ap.add_argument("--password", default="demo1234")
     ap.add_argument("--record", type=int, default=1)
+    ap.add_argument("--modes", default="simple,agent", help="只跑指定模式，逗号分隔")
+    ap.add_argument("--out", default="eval/agent_eval.json", help="明细输出路径")
     args = ap.parse_args()
+    modes = [m.strip() for m in args.modes.split(",") if m.strip()]
 
     token = call(args.base, "POST", "/api/auth/login",
                  {"username": args.user, "password": args.password})["data"]["token"]
 
     rows = []
-    for mode in ("simple", "agent"):
+    for mode in modes:
         for item in QUESTIONS:
             question = item["q"]
             record_id = item.get("record", args.record)
@@ -116,7 +119,7 @@ def main():
     print()
     print("| 模式 | 事实命中 | 平均耗时 | 平均工具调用 | 平均 token | 降级 |")
     print("|---|---|---|---|---|---|")
-    for mode in ("simple", "agent"):
+    for mode in modes:
         subset = [r for r in rows if r["mode"] == mode]
         hit = sum(1 for r in subset if r["ok"])
         n = len(subset)
@@ -127,10 +130,10 @@ def main():
             sum(r["tokens"] for r in subset) / n,
             sum(1 for r in subset if r["degraded"])))
 
-    with open("eval/agent_eval.json", "w", encoding="utf-8") as f:
+    with open(args.out, "w", encoding="utf-8") as f:
         json.dump(rows, f, ensure_ascii=False, indent=1)
     print()
-    print("明细已写入 eval/agent_eval.json")
+    print("明细已写入 " + args.out)
 
 
 if __name__ == "__main__":

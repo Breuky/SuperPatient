@@ -32,7 +32,8 @@ class LlmError(Exception):
     pass
 
 
-def chat(api_key, messages, tools=None, model=None, base_url=None, timeout=25, temperature=0):
+def chat(api_key, messages, tools=None, model=None, base_url=None, timeout=25, temperature=0,
+         tool_choice="auto"):
     url = (base_url or DEFAULT_BASE).rstrip("/") + "/chat/completions"
     body = {
         "model": model or DEFAULT_MODEL,
@@ -41,7 +42,7 @@ def chat(api_key, messages, tools=None, model=None, base_url=None, timeout=25, t
     }
     if tools:
         body["tools"] = tools
-        body["tool_choice"] = "auto"
+        body["tool_choice"] = tool_choice
 
     req = urllib.request.Request(
         url,

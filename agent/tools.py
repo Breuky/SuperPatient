@@ -39,7 +39,7 @@ class ToolBox:
             "type": "function",
             "function": {
                 "name": "get_record",
-                "description": "取某次检查的全部指标值、单位、参考区间与异常标记。",
+                "description": "取某次检查的全部指标值、单位、参考区间与异常标记。问「这次/本次」的异常项、具体数值时先用它。",
                 "parameters": {
                     "type": "object",
                     "properties": {"record_id": {"type": "integer"}},
@@ -62,7 +62,7 @@ class ToolBox:
             "type": "function",
             "function": {
                 "name": "get_trend",
-                "description": "取某个指标的历史数值序列（按时间升序），用于和过去对比。",
+                "description": "取某个指标的历史数值序列（按时间升序）。问「比上次」「变化」「最近怎么样」时用它。",
                 "parameters": {
                     "type": "object",
                     "properties": {
