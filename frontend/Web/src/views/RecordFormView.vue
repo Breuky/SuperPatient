@@ -129,7 +129,7 @@
           <div class="el-upload__tip">
             支持 jpg/png 格式
             <el-checkbox v-model="keepImage" size="small" class="keep-image">
-              保留报告照片（不勾选则识别后即丢弃）
+              保留报告照片（勾选后保存时一并存入；不勾选则识别后即丢弃）
             </el-checkbox>
           </div>
         </template>
@@ -137,7 +137,7 @@
     </el-card>
 
     <div style="margin-top:16px;display:flex;gap:12px">
-      <el-button type="success" size="large" @click="handleSave">保存</el-button>
+      <el-button type="success" size="large" :loading="uploading" @click="handleSave">保存</el-button>
       <el-button size="large" @click="$router.back()">取消</el-button>
     </div>
 
@@ -305,6 +305,17 @@ function toDateTime(date) {
 async function handleSave() {
   if (!form.categoryId) return alert('请选择检查类型')
   try {
+    // 勾了「保留」但还没上传（用户没点 AI 识别）：保存时补一次上传，否则图片会丢
+    if (keepImage.value && selectedFile.value && !uploadedUrl.value) {
+      uploading.value = true
+      try {
+        const up = await fileApi.upload(selectedFile.value)
+        uploadedUrl.value = up.data.url
+      } finally {
+        uploading.value = false
+      }
+    }
+
     const values = Object.values(valueMap).filter(v => v && (v.valueDecimal != null || v.valueText))
     const data = {
       ...form,
