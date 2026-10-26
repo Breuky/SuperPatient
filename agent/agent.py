@@ -26,7 +26,8 @@ def _sanitize(parsed):
 
     summary = parsed.get("summary") or ""
     if any(w in summary for w in FORBIDDEN):
-        summary = "本次数据已读取，但生成内容触碰了「不给医疗建议」的边界，已过滤。"
+        # 判病、治疗类的措辞整段换成范围说明，数据由 highlights 继续给
+        summary = "这部分属于医学判断，我这边只能提供数据。"
 
     highlights = []
     dropped = 0
@@ -44,7 +45,29 @@ def _sanitize(parsed):
     warnings = list(parsed.get("warnings") or [])
     if dropped:
         warnings.append("有 %d 条内容因包含医疗建议类表述被过滤" % dropped)
-    return {"summary": summary, "highlights": highlights, "warnings": warnings}
+
+    # 越界提问：模型声明「这是医学判断」，前端单独展示，不混在正文里
+    scope_note = (parsed.get("scope_note") or "").strip()
+    if any(w in scope_note for w in FORBIDDEN):
+        scope_note = ""
+
+    # 模型偶尔只在正文里声明、忘了置位；用固定标记兜住
+    marker = "【医学判断】"
+    out_of_scope = bool(parsed.get("out_of_scope")) or summary.startswith(marker)
+    if summary.startswith(marker):
+        summary = summary[len(marker):].strip()
+    if out_of_scope and not scope_note:
+        scope_note = "涉及医学判断，我只提供与它相关的数据"
+    if not out_of_scope:
+        scope_note = ""
+
+    return {
+        "summary": summary,
+        "highlights": highlights,
+        "warnings": warnings,
+        "out_of_scope": out_of_scope,
+        "scope_note": scope_note,
+    }
 
 
 def run_simple(api_key, evidence, model=None, llm_base=None):

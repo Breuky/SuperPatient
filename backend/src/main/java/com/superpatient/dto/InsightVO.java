@@ -15,6 +15,10 @@ public class InsightVO {
     private String summary;
     private List<Highlight> highlights = new ArrayList<>();
     private List<String> warnings = new ArrayList<>();
+    /** 用户问的是病因/危害/要不要治疗这类医学判断，系统只给数据、不给结论 */
+    private boolean outOfScope;
+    /** 越界时说明「我能提供什么」 */
+    private String scopeNote;
     /** agent 模式下了几轮 */
     private Integer turns;
     /** 每次工具调用的轨迹，agent 模式才有 */

@@ -39,6 +39,11 @@
               <div v-if="m.role === 'user'" class="bubble user">{{ m.text }}</div>
               <div v-else class="bubble assistant">
                 <el-alert
+                  v-if="m.data.outOfScope"
+                  type="info" :closable="false" show-icon style="margin-bottom:10px"
+                  :title="m.data.scopeNote || '这个问题涉及医学判断，我这边只能提供与它相关的数据'"
+                />
+                <el-alert
                   v-if="m.data.degraded"
                   type="warning" :closable="false" show-icon style="margin-bottom:10px"
                   :title="(m.data.warnings && m.data.warnings[0]) || '模型不可用，已降级为规则摘要'"

@@ -313,6 +313,8 @@ public class InsightService {
         vo.setSummary(String.valueOf(response.getOrDefault("summary", "")));
         vo.setDisclaimer(DISCLAIMER);
         vo.setDegraded(Boolean.TRUE.equals(response.get("degraded")));
+        vo.setOutOfScope(Boolean.TRUE.equals(response.get("out_of_scope")));
+        vo.setScopeNote((String) response.get("scope_note"));
         Object turns = response.get("turns");
         if (turns instanceof Number) vo.setTurns(((Number) turns).intValue());
         vo.setUsage((Map<String, Object>) response.get("usage"));

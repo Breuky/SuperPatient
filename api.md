@@ -565,6 +565,8 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
     "summary": "最近一次检查是2026年06月15日，在市第一人民医院做的CT检查。",
     "highlights": [{ "indicator": "CT", "text": "…", "basis": "list_records" }],
     "warnings": [],
+    "outOfScope": false,
+    "scopeNote": "",
     "turns": 2,
     "trace": [{ "tool": "list_records", "args": { "limit": 10 }, "ms": 14, "ok": true }],
     "usage": { "total_tokens": 2103 },
@@ -573,6 +575,8 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
   }
 }
 ```
+
+`outOfScope=true` 表示用户问的是病因、危害、要不要治疗这类医学判断，此时只返回与问题相关的事实数据，`scopeNote` 说明系统能提供什么。
 
 `degraded=true` 表示已降级为规则摘要，`mode` 会是 `rule`，`warnings[0]` 给出原因。`disclaimer` 由服务端拼接，不接受模型生成。
 
