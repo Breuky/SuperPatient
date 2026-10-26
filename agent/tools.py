@@ -144,13 +144,18 @@ class ToolBox:
     def _list_records(self, limit=10):
         data = self._get("/api/records?page=1&pageSize=%d" % int(limit or 10)) or {}
         rows = data.get("rows") or []
-        return [{
-            "record_id": r.get("id"),
-            "date": (r.get("examDate") or "")[:10],
-            "category": r.get("categoryName"),
-            "hospital": r.get("hospital"),
-            "abnormal_count": r.get("abnormalCount"),
-        } for r in rows]
+        return {
+            # total 是全量条数，回答「一共几次检查」必须用它，不能数当前页
+            "total": data.get("total"),
+            "returned": len(rows),
+            "records": [{
+                "record_id": r.get("id"),
+                "date": (r.get("examDate") or "")[:10],
+                "category": r.get("categoryName"),
+                "hospital": r.get("hospital"),
+                "abnormal_count": r.get("abnormalCount"),
+            } for r in rows],
+        }
 
     def _get_record(self, record_id=None):
         if not record_id:
