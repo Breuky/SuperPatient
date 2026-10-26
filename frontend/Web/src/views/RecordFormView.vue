@@ -100,7 +100,7 @@
               <el-checkbox v-model="doubleRead" size="small" :disabled="parsing">精读</el-checkbox>
             </el-tooltip>
             <el-button
-              v-if="uploadedUrl"
+              v-if="uploadedUrl || selectedFile"
               type="primary"
               plain
               size="small"
@@ -126,7 +126,12 @@
           <el-icon><Upload /></el-icon> 点击上传
         </el-button>
         <template #tip>
-          <div class="el-upload__tip">支持 jpg/png 格式</div>
+          <div class="el-upload__tip">
+            支持 jpg/png 格式
+            <el-checkbox v-model="keepImage" size="small" class="keep-image">
+              保留报告照片（不勾选则识别后即丢弃）
+            </el-checkbox>
+          </div>
         </template>
       </el-upload>
     </el-card>
@@ -179,6 +184,9 @@ const form = reactive({
 
 const valueMap = reactive({})
 const uploadedUrl = ref('')
+const selectedFile = ref(null)
+/** 默认不保留原图：识别完即丢弃，只有勾选才写盘 */
+const keepImage = ref(false)
 const fileList = ref([])
 const parsing = ref(false)
 const uploading = ref(false)
@@ -198,27 +206,37 @@ const activeIndicators = computed(() => {
   return cat?.indicators || []
 })
 
-async function onFileChange(file) {
-  uploading.value = true
-  try {
-    const res = await fileApi.upload(file.raw)
-    uploadedUrl.value = res.data.url
-    ElMessage.success('上传成功，可以点右上角「AI 识别化验单」')
-  } catch (err) {
-    uploadedUrl.value = ''
-    ElMessage.error('上传失败: ' + err.message)
-  } finally {
-    uploading.value = false
-  }
+function onFileChange(file) {
+  // 选图时不立马上传：默认只用于本次识别，识别完即丢弃
+  selectedFile.value = file?.raw || null
+  uploadedUrl.value = ''
+  fileList.value = file ? [file] : []
+  if (file) ElMessage.success('已选择图片，点右上角「AI 识别化验单」')
 }
 
 async function handleParse() {
   if (!form.categoryId) return alert('请先选择检查类型')
-  if (!uploadedUrl.value) return alert('请先上传报告照片')
+  if (!uploadedUrl.value && !selectedFile.value) return alert('请先选择报告照片')
 
   parsing.value = true
   try {
-    const res = await parseApi.report(uploadedUrl.value, form.categoryId, doubleRead.value)
+    let res
+    if (!keepImage.value && selectedFile.value) {
+      // 不保留原图：直接把字节发给服务端，用完即弃
+      res = await parseApi.reportImage(selectedFile.value, form.categoryId, doubleRead.value)
+      uploadedUrl.value = ''
+    } else {
+      if (selectedFile.value && !uploadedUrl.value) {
+        uploading.value = true
+        try {
+          const up = await fileApi.upload(selectedFile.value)
+          uploadedUrl.value = up.data.url
+        } finally {
+          uploading.value = false
+        }
+      }
+      res = await parseApi.report(uploadedUrl.value, form.categoryId, doubleRead.value)
+    }
     const data = res.data || {}
     const n = data.candidates?.length || 0
     const m = data.unmatched?.length || 0
@@ -290,7 +308,10 @@ async function handleSave() {
     const values = Object.values(valueMap).filter(v => v && (v.valueDecimal != null || v.valueText))
     const data = {
       ...form,
-      imageUrl: uploadedUrl.value || null,
+      // 勾了保留才带上图片；没勾但也没换图（编辑旧记录）时保留原值
+      imageUrl: keepImage.value
+        ? (uploadedUrl.value || null)
+        : (selectedFile.value ? null : (uploadedUrl.value || null)),
       values
     }
 
@@ -346,6 +367,7 @@ onMounted(async () => {
 <style scoped>
 .ind-header { display: flex; align-items: center; justify-content: space-between; }
 .parse-actions { display: flex; align-items: center; gap: 12px; }
+.keep-image { margin-left: 12px; }
 .ind-hint { font-size: 12px; color: #909399; font-weight: 400; }
 .group-title { font-size: 13px; color: #606266; font-weight: 600; margin: 8px 0 4px; }
 .group-title.clickable { cursor: pointer; color: #909399; font-weight: 400; }

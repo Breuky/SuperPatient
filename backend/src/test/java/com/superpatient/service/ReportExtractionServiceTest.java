@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -139,16 +141,36 @@ class ReportExtractionServiceTest {
         assertThrows(BusinessException.class, () -> service.parse("https://evil.example.com/a.png", 1));
     }
 
-    private void stubImageAndPool() throws Exception {
+    @Test
+    void parseBytesNeverTouchesStoredFile() throws Exception {
+        stubPool();
+        when(llm.extract(any(), any(), any())).thenReturn("""
+                {"items":[{"name":"WBC","value":"6.2","unit":"10^9/L","refText":"4-10"}]}
+                """);
+        when(llm.displayName()).thenReturn("mock");
+
+        ExtractResultVO result = service.parseBytes(new byte[]{9, 9, 9}, "image/jpeg", 1, false);
+
+        assertEquals(1, result.getCandidates().size());
+        // 关键：不读取、不写入任何已存储文件
+        verify(fileService, never()).load(anyLong());
+    }
+
+    private void stubPool() {
         when(valueMapper.findLatestValues(any())).thenReturn(List.of());
-        when(fileService.load(anyLong()))
-                .thenReturn(new FileService.FileContent(new ByteArrayResource(new byte[]{1, 2, 3}), "image/png"));
         when(indicatorMapper.findVisibleByCategory(anyInt(), any())).thenReturn(List.of(
                 indicator(1, "血红蛋白", "HGB,Hb", "g/L", "120", "160"),
                 indicator(2, "白细胞计数", "WBC", "10^9/L", "4", "10"),
                 indicator(3, "葡萄糖", "GLU", "mmol/L", "3.9", "6.1"),
                 indicator(4, "红细胞分布宽度", "RDW", "%", "11", "14.5")
         ));
+    }
+
+    /** 走 imageUrl 的路径需要一张已存储的图片；解析内存字节的用例不需要 */
+    private void stubImageAndPool() throws Exception {
+        stubPool();
+        when(fileService.load(anyLong()))
+                .thenReturn(new FileService.FileContent(new ByteArrayResource(new byte[]{1, 2, 3}), "image/png"));
     }
 
     private ExamIndicator indicator(int id, String name, String aliases, String unit, String min, String max) {

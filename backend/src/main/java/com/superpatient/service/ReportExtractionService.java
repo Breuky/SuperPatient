@@ -76,6 +76,14 @@ public class ReportExtractionService {
             throw new BusinessException("读取图片失败: " + e.getMessage());
         }
 
+        return parseBytes(bytes, mimeType, categoryId, doubleRead);
+    }
+
+    /**
+     * 直接解析内存里的图片：不落盘、不建 upload_file，识别完即丢弃。
+     * 对应前端「不保留原图」模式。
+     */
+    public ExtractResultVO parseBytes(byte[] bytes, String mimeType, Integer categoryId, boolean doubleRead) {
         List<ExamIndicator> pool = indicatorMapper.findVisibleByCategory(categoryId, CurrentHolder.getCurrentId());
         ReferenceRangeService.UserContext ctx = ReferenceRangeService.UserContext.of(
                 userMapper.findById(CurrentHolder.getCurrentId()));
