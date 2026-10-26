@@ -23,6 +23,12 @@ from llm import LlmError  # noqa: E402
 DEFAULT_JAVA_BASE = os.environ.get("JAVA_BASE", "http://localhost:8080")
 
 
+class AgentServer(ThreadingHTTPServer):
+    """禁止端口复用：Windows 下 allow_reuse_address=True 会让第二个实例静默绑定同一个端口，
+    导致请求随机落到旧进程（配置不生效、鉴权莫名其妙的 401）。这里改成绑不上就直接报错。"""
+    allow_reuse_address = False
+
+
 class Handler(BaseHTTPRequestHandler):
     service_version = "1.0"
 
@@ -74,9 +80,16 @@ class Handler(BaseHTTPRequestHandler):
         api_key = self.headers.get("X-Llm-Key") or os.environ.get("DASHSCOPE_API_KEY") or ""
         token = self.headers.get("X-User-Token") or ""
         model = self.headers.get("X-Llm-Model") or os.environ.get("LLM_MODEL")
+        # 允许换到任意 OpenAI 兼容端点（DeepSeek / 智谱 / 本地 vLLM…）
+        llm_base = (self.headers.get("X-Llm-Base")
+                    or os.environ.get("AGENT_LLM_BASE_URL")
+                    or os.environ.get("LLM_BASE_URL")
+                    or None)
 
         if not api_key:
             return self._json(200, {"ok": False, "error": "缺少模型 Key"})
+        # 只记录长度与端点，不落密钥本身
+        self.log_message("key_len=%d base=%s model=%s", len(api_key), llm_base or "default", model)
 
         try:
             if self.path == "/agent/report-insight":
@@ -86,11 +99,11 @@ class Handler(BaseHTTPRequestHandler):
                 result = run_agent(
                     api_key, java_base, token,
                     body.get("recordId"), body.get("question"), model,
-                    body.get("history") or [])
+                    body.get("history") or [], llm_base)
             elif self.path == "/agent/summarize":
-                result = run_simple(api_key, body.get("evidence") or {}, model)
+                result = run_simple(api_key, body.get("evidence") or {}, model, llm_base)
             elif self.path == "/agent/followup-note":
-                result = run_followup_notes(api_key, body.get("items") or [], model)
+                result = run_followup_notes(api_key, body.get("items") or [], model, llm_base)
             else:
                 return self._json(404, {"ok": False, "error": "not found"})
         except LlmError as e:
@@ -110,7 +123,11 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=8001)
     args = ap.parse_args()
-    server = ThreadingHTTPServer(("127.0.0.1", args.port), Handler)
+    try:
+        server = AgentServer(("127.0.0.1", args.port), Handler)
+    except OSError as e:
+        print("端口 %d 已被占用（%s）；先关掉旧实例再启动" % (args.port, e))
+        raise SystemExit(1)
     print("agent service listening on http://127.0.0.1:%d" % args.port)
     server.serve_forever()
 

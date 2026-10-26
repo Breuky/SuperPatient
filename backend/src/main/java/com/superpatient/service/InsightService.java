@@ -44,6 +44,8 @@ public class InsightService {
     private final boolean enabled;
     private final String model;
     private final String apiKey;
+    /** Agent 可单独换模型端点（如 DeepSeek），留空则用 Agent 服务内置的 DashScope */
+    private final String llmBase;
     private final String javaBase;
 
     public InsightService(RecordService recordService,
@@ -53,6 +55,8 @@ public class InsightService {
                           @Value("${app.agent.enabled:false}") boolean enabled,
                           @Value("${app.agent.base-url:http://127.0.0.1:8001}") String baseUrl,
                           @Value("${app.agent.model:qwen-plus}") String model,
+                          @Value("${app.agent.api-key:}") String agentApiKey,
+                          @Value("${app.agent.llm-base-url:}") String llmBase,
                           @Value("${app.llm.api-key:}") String apiKey,
                           @Value("${server.port:8080}") int serverPort) {
         this.recordService = recordService;
@@ -61,7 +65,9 @@ public class InsightService {
         this.objectMapper = objectMapper;
         this.enabled = enabled;
         this.model = model;
-        this.apiKey = apiKey;
+        // 抽取和 Agent 可以用不同的 Key（例如识别用通义、解读用 DeepSeek）
+        this.apiKey = (agentApiKey == null || agentApiKey.isBlank()) ? apiKey : agentApiKey;
+        this.llmBase = llmBase == null ? "" : llmBase.trim();
         this.javaBase = "http://127.0.0.1:" + serverPort;
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -107,6 +113,9 @@ public class InsightService {
                     .header("X-User-Token", currentToken())
                     .header("X-Llm-Key", apiKey)
                     .header("X-Llm-Model", model)
+                    .headers(headers -> {
+                        if (!llmBase.isEmpty()) headers.set("X-Llm-Base", llmBase);
+                    })
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(payload)
                     .retrieve()
@@ -181,6 +190,9 @@ public class InsightService {
                     .uri("/agent/followup-note")
                     .header("X-Llm-Key", apiKey)
                     .header("X-Llm-Model", model)
+                    .headers(headers -> {
+                        if (!llmBase.isEmpty()) headers.set("X-Llm-Base", llmBase);
+                    })
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("items", items))
                     .retrieve()

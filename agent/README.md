@@ -11,6 +11,22 @@
 
 本服务**不连数据库**，所有数据通过 Java 的只读接口取，鉴权沿用用户自己的 JWT（由 Java 透传）。
 
+## 换模型端点
+
+默认 DashScope（通义）。换成任意 OpenAI 兼容端点（DeepSeek / 智谱 / 本地 vLLM）只需三个环境变量，代码不动：
+
+```bash
+export AGENT_MODEL=deepseek-chat
+export AGENT_LLM_BASE_URL=https://api.deepseek.com
+export AGENT_API_KEY=sk-...
+python agent/server.py --port 8001
+```
+
+端点优先级：请求头 `X-Llm-Base`（Java 透传）> `AGENT_LLM_BASE_URL` > `LLM_BASE_URL` > 内置 DashScope。
+个别端点不支持 `tool_choice=required`，代码会自动退回 `auto` 重试一次。
+
+注意：`deepseek-reasoner` 这类推理模型不支持 function calling，只能用 `deepseek-chat`。
+
 ## 启动
 
 ```bash
@@ -18,6 +34,10 @@ python agent/server.py --port 8001
 # 后端启动时打开开关
 AGENT_ENABLED=true mvn spring-boot:run
 ```
+
+## 只允许一个实例
+
+Windows 下 `HTTPServer.allow_reuse_address=True` 会让**两个进程同时绑定 8001**，请求随机落到旧实例，表现为"改了配置不生效"或"莫名其妙的 401"。本服务已改成 `allow_reuse_address = False`：端口被占时直接报错退出。
 
 ## 两种模式
 

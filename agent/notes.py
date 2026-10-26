@@ -17,7 +17,7 @@ SYSTEM_NOTE = """你是文案润色助手。输入是若干条「随访提醒」
 """
 
 
-def run_followup_notes(api_key, items, model=None):
+def run_followup_notes(api_key, items, model=None, llm_base=None):
     if not items:
         return {"notes": []}
 
@@ -25,7 +25,7 @@ def run_followup_notes(api_key, items, model=None):
     msg, usage = chat(api_key, [
         {"role": "system", "content": SYSTEM_NOTE},
         {"role": "user", "content": user_content},
-    ], model=model)
+    ], model=model, base_url=llm_base)
 
     parsed = parse_json_block(msg.get("content")) or {}
     notes = []

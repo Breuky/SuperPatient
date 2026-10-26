@@ -28,7 +28,12 @@ app:
     # Python Agent 服务（agent/server.py），关闭时解读自动降级为规则摘要
     enabled: ${AGENT_ENABLED:false}
     base-url: ${AGENT_BASE_URL:http://127.0.0.1:8001}
+    # 解读用的模型；换 DeepSeek 时同时设 AGENT_LLM_BASE_URL 和 AGENT_API_KEY
     model: ${AGENT_MODEL:qwen-plus}
+    # 留空则复用 app.llm.api-key（抽取和解读共用一个 Key）
+    api-key: ${AGENT_API_KEY:}
+    # 留空则用 Agent 服务内置的 DashScope 地址
+    llm-base-url: ${AGENT_LLM_BASE_URL:}
   extract:
     double-read:
       # 精读：同一张图识别两次并仲裁不一致的行，耗时和成本约 2-3 倍

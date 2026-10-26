@@ -231,6 +231,29 @@ agent 模式只拿到 `recordId` 和问题，可用五个只读工具：`find_in
 
 会话只存在当前标签页（sessionStorage）：刷新还在，关掉或点「新对话」清空。
 
+### 换模型：留空用通义，也可以接 DeepSeek
+
+Agent 只用 OpenAI 兼容的 `/chat/completions`，所以换供应商不需要改代码，三个环境变量即可：
+
+```bash
+export AGENT_ENABLED=true
+export AGENT_MODEL=deepseek-chat                    # 必须是支持 function calling 的模型
+export AGENT_LLM_BASE_URL=https://api.deepseek.com  # 留空 = 通义 DashScope
+export AGENT_API_KEY=sk-...                         # 留空 = 复用 DASHSCOPE_API_KEY
+```
+
+实测（同一批问题、同一套工具）：
+
+| 模型 | 首题 | 趋势题（3 次工具） | 工具链 |
+|---|---|---|---|
+| qwen-plus | 3.5s | 6.3s | 正常 |
+| deepseek-chat | **2.4s** | 3.7s | 正常 |
+
+两个限制：
+
+- **识别（看图）不能换**：DeepSeek 没有视觉模型，化验单仍走 `qwen-vl`。两边不同供应商时，`AGENT_API_KEY` 和 `DASHSCOPE_API_KEY` 都要设
+- **reasoner 类模型不支持 function calling**，只能用 `deepseek-chat` 这种对话模型
+
 ### 对照实验：30 个问题 × 两种模式
 
 `python eval/run_agent_eval.py`，30 个问题覆盖异常项、单指标取值、跨记录对比、缺失指标、影像记录，以及「下不下诊断」的边界问题。事实命中按「答案里是否出现预期数值/结论、且不含越界表述」判定：

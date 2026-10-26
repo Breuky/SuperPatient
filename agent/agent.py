@@ -43,14 +43,14 @@ def _sanitize(parsed):
     return {"summary": summary, "highlights": highlights, "warnings": warnings}
 
 
-def run_simple(api_key, evidence, model=None):
+def run_simple(api_key, evidence, model=None, llm_base=None):
     """证据包模式：一次调用，模型没有任何工具"""
     messages = [
         {"role": "system", "content": SYSTEM_SIMPLE},
         {"role": "user", "content": json.dumps(evidence, ensure_ascii=False)},
     ]
     started = time.time()
-    msg, usage = chat(api_key, messages, model=model)
+    msg, usage = chat(api_key, messages, model=model, base_url=llm_base)
     result = _sanitize(parse_json_block(msg.get("content")))
     result.update({
         "mode": "simple",
@@ -62,7 +62,8 @@ def run_simple(api_key, evidence, model=None):
     return result
 
 
-def run_agent(api_key, java_base, token, record_id, question, model=None, history=None):
+def run_agent(api_key, java_base, token, record_id, question, model=None, history=None,
+              llm_base=None):
     """工具循环：模型自己决定调用哪些工具、调几次"""
     box = ToolBox(java_base, token)
 
@@ -93,8 +94,16 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
         # 首轮还没取到任何数据时强制调用工具：不依赖模型"愿不愿意查"，
         # 也就不需要在提示词里写「哪类问题用哪个工具」
         choice = "required" if (require_tools and not box.trace) else "auto"
-        msg, used = chat(api_key, messages, tools=ToolBox.SCHEMAS, model=model,
-                         tool_choice=choice)
+        try:
+            msg, used = chat(api_key, messages, tools=ToolBox.SCHEMAS, model=model,
+                             base_url=llm_base, tool_choice=choice)
+        except LlmError as e:
+            # 个别 OpenAI 兼容端点不支持 tool_choice=required，退回 auto 再试一次
+            if choice == "required" and "tool_choice" in str(e).lower():
+                msg, used = chat(api_key, messages, tools=ToolBox.SCHEMAS, model=model,
+                                 base_url=llm_base, tool_choice="auto")
+            else:
+                raise
         usage = _add_usage(usage, used)
         tool_calls = msg.get("tool_calls") or []
         if not tool_calls:
@@ -154,7 +163,7 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
     forced = True
     messages.append({"role": "user", "content": "请基于已经取得的工具结果直接输出最终 JSON，不要再调用工具。"})
     try:
-        msg, used = chat(api_key, messages, model=model, timeout=15)
+        msg, used = chat(api_key, messages, model=model, base_url=llm_base, timeout=15)
         usage = _add_usage(usage, used)
         result = _sanitize(parse_json_block(msg.get("content")))
     except LlmError as e:
