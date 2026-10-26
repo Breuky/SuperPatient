@@ -3,6 +3,7 @@
 import json
 import os
 import ssl
+import urllib.error
 import urllib.request
 
 DEFAULT_BASE = "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -53,6 +54,14 @@ def chat(api_key, messages, tools=None, model=None, base_url=None, timeout=25, t
     try:
         with urllib.request.urlopen(req, timeout=timeout, context=_SSL_CONTEXT) as resp:
             payload = json.loads(resp.read().decode("utf-8"))
+    except urllib.error.HTTPError as e:
+        # 把服务端的错误正文带出来，否则只剩 “400 Bad Request”，无法判断原因
+        detail = ""
+        try:
+            detail = e.read().decode("utf-8", "replace")[:300]
+        except Exception:  # noqa: BLE001
+            pass
+        raise LlmError("模型调用失败: HTTP %d %s" % (e.code, detail))
     except Exception as e:  # noqa: BLE001
         raise LlmError("模型调用失败: %s" % e)
 
@@ -61,7 +70,11 @@ def chat(api_key, messages, tools=None, model=None, base_url=None, timeout=25, t
     choices = payload.get("choices") or []
     if not choices:
         raise LlmError("模型没有返回 choices")
-    return choices[0].get("message") or {}, (payload.get("usage") or {})
+    message = choices[0].get("message") or {}
+    if not message.get("content") and not message.get("tool_calls"):
+        # thinking 模型可能把额度全花在 reasoning_content 上，content 为空
+        raise LlmError("模型只输出了推理过程，没有给出结果；请重试或改用非 thinking 模型")
+    return message, (payload.get("usage") or {})
 
 
 def parse_json_block(text):

@@ -133,6 +133,26 @@ export LLM_API_KEY=sk-xxx
 
 结论：**简单报告 deepseek-flash 可用，密集小字表格会稳定丢末位**（不是随机，两轮完全一致）。所以抽取默认仍推荐 qwen-vl；只有 DeepSeek 额度时也能跑，代价是靠校对页兜底。文本 Agent 用 deepseek-chat 没有这个问题。
 
+**一套 Key 跑全流程（识图 + 聊天都用 flash）**：
+
+```yaml
+# backend/src/main/resources/application-local.yml  （已被 .gitignore 忽略）
+app:
+  llm:
+    provider: openai
+    base-url: https://api.deepseek.com
+    model: deepseek-flash
+    api-key: ${DEEPSEEK_API_KEY:}
+  agent:
+    enabled: true
+    base-url: http://127.0.0.1:8001
+    model: deepseek-flash
+    api-key: ${DEEPSEEK_API_KEY:}
+    llm-base-url: https://api.deepseek.com
+```
+
+一个必须知道的行为：**flash 是 thinking 模型，不接受 `tool_choice=required`**（会返回「Thinking mode does not support this tool_choice」）。代码会自动退回 `auto` 并把结论记住，之后不再发这个无效请求。代价是首轮不再被强制取数，靠系统提示词的"没有数据不许作答"兜底。
+
 ### 5. AI 解读的 Agent 服务（后端与 Agent 分别启动）
 
 不启动也能用——解读会自动降级为规则摘要。

@@ -14,6 +14,10 @@ from tools import ToolBox
 MAX_TURNS = 6
 DEADLINE_SECONDS = 20
 
+# thinking 模型（如 deepseek-flash）不接受 tool_choice=required，
+# 记住一次，后续请求直接走 auto，避免每次都先吃一个 400
+_REQUIRED_UNSUPPORTED = set()
+
 
 def _sanitize(parsed):
     """越界内容直接丢弃：宁可少说，不可给医疗建议"""
@@ -93,13 +97,15 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
     while turns < MAX_TURNS and (time.time() - started) < DEADLINE_SECONDS:
         # 首轮还没取到任何数据时强制调用工具：不依赖模型"愿不愿意查"，
         # 也就不需要在提示词里写「哪类问题用哪个工具」
-        choice = "required" if (require_tools and not box.trace) else "auto"
+        choice = "required" if (require_tools and not box.trace
+                               and (model or "") not in _REQUIRED_UNSUPPORTED) else "auto"
         try:
             msg, used = chat(api_key, messages, tools=ToolBox.SCHEMAS, model=model,
                              base_url=llm_base, tool_choice=choice)
         except LlmError as e:
             # 个别 OpenAI 兼容端点不支持 tool_choice=required，退回 auto 再试一次
             if choice == "required" and "tool_choice" in str(e).lower():
+                _REQUIRED_UNSUPPORTED.add(model or "")
                 msg, used = chat(api_key, messages, tools=ToolBox.SCHEMAS, model=model,
                                  base_url=llm_base, tool_choice="auto")
             else:
