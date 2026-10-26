@@ -25,3 +25,6 @@ logs/
 .DS_Store
 __pycache__/
 *.pyc
+_ds_*.json
+_t_*.json
+_r_*.json
