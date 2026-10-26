@@ -42,7 +42,7 @@ app:
     # mock=返回固定样本（无需 Key）；qwen=调用通义千问 VL
     provider: ${LLM_PROVIDER:mock}
     base-url: ${LLM_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode/v1}
-    api-key: ${DASHSCOPE_API_KEY:}
+    api-key: ${LLM_API_KEY:${DASHSCOPE_API_KEY:}}
     model: ${LLM_MODEL:qwen-vl-max-latest}
 
 mybatis:

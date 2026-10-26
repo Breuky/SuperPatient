@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.superpatient.exception.BusinessException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
@@ -28,7 +28,8 @@ import java.util.Map;
  */
 @Slf4j
 @Component
-@ConditionalOnProperty(name = "app.llm.provider", havingValue = "qwen")
+// qwen / openai 都走 OpenAI 兼容的 /chat/completions：填 DeepSeek、智谱、本地 vLLM 都能用
+@ConditionalOnExpression("'${app.llm.provider:mock}' == 'qwen' or '${app.llm.provider:mock}' == 'openai'")
 public class QwenVlVisionClient implements LlmVisionClient {
 
     private final RestClient restClient;
@@ -84,13 +85,13 @@ public class QwenVlVisionClient implements LlmVisionClient {
                     .retrieve()
                     .body(String.class);
         } catch (ResourceAccessException e) {
-            log.error("调用 Qwen-VL 超时（耗时 {}ms）", System.currentTimeMillis() - start, e);
+            log.error("调用视觉模型超时（耗时 {}ms）", System.currentTimeMillis() - start, e);
             throw new BusinessException("识别超时（超过 90 秒），请重试或换一张更清晰的图片");
         } catch (Exception e) {
-            log.error("调用 Qwen-VL 失败（耗时 {}ms）", System.currentTimeMillis() - start, e);
+            log.error("调用视觉模型失败（耗时 {}ms）", System.currentTimeMillis() - start, e);
             throw new BusinessException("模型调用失败，请稍后重试");
         }
-        log.info("Qwen-VL 调用完成，耗时 {}ms，响应 {} 字符",
+        log.info("视觉模型调用完成，耗时 {}ms，响应 {} 字符",
                 System.currentTimeMillis() - start, raw == null ? 0 : raw.length());
 
         return extractContent(raw);

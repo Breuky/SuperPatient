@@ -104,15 +104,34 @@ cd frontend/Web && npm install && npm run dev   # http://localhost:3000
 
 也可以点「注册」创建新账号，注册时需选择性别（用于匹配参考区间）。
 
-### 4. 切换真实模型
+### 4. 切换真实模型（抽取）
 
-默认 `LLM_PROVIDER=mock`，返回固定样本，用于无 Key 时打通链路。
+默认 ```LLM_PROVIDER=mock```，返回固定样本，用于无 Key 时打通链路。抽取走 OpenAI 兼容的 ```/chat/completions```，任何支持图片输入的端点都能填：
 
 ```bash
+# 通义（默认推荐：密集小字表格更稳）
 export LLM_PROVIDER=qwen
-export DASHSCOPE_API_KEY=sk-xxx
-# 可选：LLM_MODEL / LLM_BASE_URL
+export LLM_API_KEY=sk-xxx
+export LLM_MODEL=qwen-vl-max-latest
+
+# 或 DeepSeek（deepseek-flash 支持图片输入，不用另外开通义）
+export LLM_PROVIDER=openai
+export LLM_BASE_URL=https://api.deepseek.com
+export LLM_MODEL=deepseek-flash
+export LLM_API_KEY=sk-xxx
+
+# 旧变量名 DASHSCOPE_API_KEY 仍然兼容
 ```
+
+**实测对比**（同一批标注，2026-10 抽检）：
+
+| 样本 | deepseek-flash | qwen-vl |
+|---|---|---|
+| 01（22 行，清晰） | 22/22，数值 **100%** | 100% |
+| 07（24 行血常规） | 数值 95.7% | 95.8% |
+| 02（43 行，小字密集） | 数值 **21.4%**（两轮同结果，45.6→45、102→10） | 最好 100%，也曾出现 9.3% 的单轮崩坏 |
+
+结论：**简单报告 deepseek-flash 可用，密集小字表格会稳定丢末位**（不是随机，两轮完全一致）。所以抽取默认仍推荐 qwen-vl；只有 DeepSeek 额度时也能跑，代价是靠校对页兜底。文本 Agent 用 deepseek-chat 没有这个问题。
 
 ### 5. AI 解读的 Agent 服务（后端与 Agent 分别启动）
 
