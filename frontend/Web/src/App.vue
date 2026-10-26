@@ -35,6 +35,10 @@
             <el-icon><Document /></el-icon>
             <span>我的记录</span>
           </el-menu-item>
+          <el-menu-item index="/assistant">
+            <el-icon><ChatDotRound /></el-icon>
+            <span>AI 助手</span>
+          </el-menu-item>
           <el-menu-item index="/trends">
             <el-icon><TrendCharts /></el-icon>
             <span>趋势分析</span>

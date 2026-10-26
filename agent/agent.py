@@ -122,9 +122,12 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
             continue
         messages.append({"role": role, "content": content[:600]})
 
+    if record_id:
+        context = "当前检查记录 id=%s（用户在记录详情页提问）" % record_id
+    else:
+        context = "当前没有指定记录（用户在全局助手提问，范围是全部记录）"
     messages.append({"role": "user",
-                     "content": "当前检查记录 id=%s\n问题：%s"
-                                % (record_id, question or "这次检查有什么需要关注的？")})
+                     "content": "%s\n问题：%s" % (context, question or "我最近的检查有什么需要关注的？")})
 
     # 首轮必须查数据；追问允许直接基于上文作答（上文本身来自已验证的工具结果）
     require_tools = not history

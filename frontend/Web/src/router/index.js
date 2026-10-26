@@ -43,6 +43,12 @@ const routes = [
     meta: { title: '检查详情' }
   },
   {
+    path: '/assistant',
+    name: 'Assistant',
+    component: () => import('@/views/AssistantView.vue'),
+    meta: { title: 'AI 助手' }
+  },
+  {
     path: '/trends',
     name: 'Trend',
     component: () => import('@/views/TrendView.vue'),

@@ -48,6 +48,20 @@ class InsightServiceFallbackTest {
     }
 
     @Test
+    void globalChatWithoutRecordReturnsClearFallback() {
+        InsightRequest request = new InsightRequest();
+        request.setRecordId(null);
+        request.setQuestion("我一共查过几次检查？");
+
+        InsightVO vo = service.explain(request);
+
+        assertTrue(vo.isDegraded());
+        assertEquals("rule", vo.getMode());
+        assertTrue(vo.getSummary().contains("AI 服务暂时不可用"), "没有当前记录时也要给出明确说明");
+        assertTrue(vo.getHighlights().isEmpty());
+    }
+
+    @Test
     void fallbackDescribesDirectionOfAbnormalValues() {
         when(recordService.detail(any())).thenReturn(record());
 

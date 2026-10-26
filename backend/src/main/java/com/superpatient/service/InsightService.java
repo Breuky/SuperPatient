@@ -77,12 +77,13 @@ public class InsightService {
     }
 
     public InsightVO explain(InsightRequest request) {
-        if (request.getRecordId() == null) {
-            throw new BusinessException("recordId 不能为空");
-        }
-        RecordDetailVO record = recordService.detail(request.getRecordId());
-        if (record == null) {
-            throw new BusinessException("检查记录不存在");
+        // recordId 可选：详情页带着它（锁定这一次），侧栏助手不带（范围是全部记录）
+        RecordDetailVO record = null;
+        if (request.getRecordId() != null) {
+            record = recordService.detail(request.getRecordId());
+            if (record == null) {
+                throw new BusinessException("检查记录不存在");
+            }
         }
 
         long started = System.currentTimeMillis();
@@ -103,6 +104,11 @@ public class InsightService {
             payload.put("javaBase", javaBase);
             payload.put("history", trimmedHistory(request.getHistory()));
             if (!agentMode) {
+                if (record == null) {
+                    result = fallback(null, "未指定记录时不支持快速模式");
+                    logInvocation(request, result, started);
+                    return result;
+                }
                 payload.put("evidence", buildEvidence(record));
             }
 
@@ -283,6 +289,15 @@ public class InsightService {
         vo.setMode("rule");
         vo.setDegraded(true);
         vo.setDisclaimer(DISCLAIMER);
+
+        if (record == null) {
+            // 全局对话没有「当前记录」可用，规则摘要拼不出来，直说
+            vo.setSummary("AI 服务暂时不可用。可以打开某条记录的详情页查看数据，或稍后重试。");
+            if (reason != null && !reason.isBlank()) {
+                vo.getWarnings().add("已降级：" + reason);
+            }
+            return vo;
+        }
 
         List<InsightVO.Highlight> highlights = new ArrayList<>();
         for (ValueVO v : record.getValues()) {
