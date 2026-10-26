@@ -1,8 +1,8 @@
 <template>
   <div>
     <PageHeader
-      title="Agent 调用记录"
-      subtitle="每次解读的问题、轮数、工具调用与耗时都留在这里，用来判断「答得好不好」和「为什么慢」"
+      title="Agent 调试"
+      subtitle="开发调试页，默认不在侧栏展示。这里能看到每次解读的问题、轮数、工具调用与耗时，用来判断「答得好不好」和「为什么慢」"
     >
       <template #actions>
         <el-button :loading="loading" @click="fetchLogs">刷新</el-button>

@@ -40,12 +40,6 @@
             <span>趋势分析</span>
           </el-menu-item>
 
-          <li class="menu-label">AI</li>
-          <el-menu-item index="/insight-logs">
-            <el-icon><MagicStick /></el-icon>
-            <span>调用记录</span>
-          </el-menu-item>
-
           <li class="menu-label">设置</li>
           <el-menu-item index="/indicators">
             <el-icon><List /></el-icon>

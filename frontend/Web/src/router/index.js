@@ -70,7 +70,7 @@ const routes = [
     path: '/insight-logs',
     name: 'InsightLogs',
     component: () => import('@/views/InsightLogsView.vue'),
-    meta: { title: 'Agent 调用记录' }
+    meta: { title: 'Agent 调试' }
   }
 ]
 
