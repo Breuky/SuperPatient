@@ -530,6 +530,66 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
 
 ---
 
+## 十、报告解读（Agent）
+
+记录详情页的对话接口。模型拿到 `recordId` 和问题后自己决定调哪些只读工具（`find_indicator` / `list_records` / `get_record` / `get_trend` / `get_reference_rules`），Java 负责鉴权、证据包、免责声明与降级。
+
+### 10.1 提问
+
+`POST /api/insights/report`
+
+```json
+{
+  "recordId": 1,
+  "question": "那最近一次检查是什么时候？",
+  "mode": "agent",
+  "history": [
+    { "role": "user", "content": "这次有哪几项超出参考区间？" },
+    { "role": "assistant", "content": "本次检查中，空腹血糖和总胆固醇两项超出参考区间。" }
+  ]
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| `mode` | `agent`（默认，工具调用循环）/ `simple`（证据包单次生成，仅兜底） |
+| `history` | 之前的问答，最多取最近 8 轮、每轮 600 字；不传即为新一轮对话 |
+
+响应：
+
+```json
+{
+  "code": 1,
+  "data": {
+    "mode": "agent",
+    "summary": "最近一次检查是2026年06月15日，在市第一人民医院做的CT检查。",
+    "highlights": [{ "indicator": "CT", "text": "…", "basis": "list_records" }],
+    "warnings": [],
+    "turns": 2,
+    "trace": [{ "tool": "list_records", "args": { "limit": 10 }, "ms": 14, "ok": true }],
+    "usage": { "total_tokens": 2103 },
+    "degraded": false,
+    "disclaimer": "以上内容仅是本系统对历史数据的描述，不构成医疗建议；如有疑问请咨询医生。"
+  }
+}
+```
+
+`degraded=true` 表示已降级为规则摘要，`mode` 会是 `rule`，`warnings[0]` 给出原因。`disclaimer` 由服务端拼接，不接受模型生成。
+
+### 10.2 调用留痕
+
+`GET /api/insights/logs?limit=50`
+
+返回本人最近的调用：`mode / question / category / turns / toolCalls / tokens / elapsedMs / degraded / summary / traceJson`。
+
+### 10.3 按题型统计
+
+`GET /api/insights/stats`
+
+按题型（异常概览、趋势对比、跨记录、单指标取值、总体概括、越界提问）聚合条数、平均轮数、平均工具次数、平均 token、平均耗时与降级次数。
+
+---
+
 ## 接口汇总
 
 | 方法 | 路径 | 说明 | 认证 |

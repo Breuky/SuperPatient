@@ -21,45 +21,59 @@
             <div class="ins-head">
               <span>AI 解读</span>
               <div class="ins-actions">
-                <el-radio-group v-model="insightMode" size="small" :disabled="insightLoading">
-                  <el-radio-button value="simple">快速</el-radio-button>
-                  <el-radio-button value="agent">深读</el-radio-button>
-                </el-radio-group>
-                <span class="mode-hint">
-                  {{ insightMode === 'agent' ? '模型自己决定查哪些数据' : '一次性喂全量数据，便宜但容易答非所问' }}
-                </span>
-                <el-button size="small" type="primary" :loading="insightLoading" @click="loadInsight">
-                  {{ insight ? '重新生成' : '生成解读' }}
-                </el-button>
+                <span class="mode-hint">模型自己决定查哪些数据，可以连续追问</span>
+                <el-button v-if="messages.length" text size="small" @click="resetChat">新对话</el-button>
               </div>
             </div>
           </template>
 
-          <div v-if="insight">
-            <el-alert
-              v-if="insight.degraded"
-              type="warning" :closable="false" show-icon style="margin-bottom:12px"
-              :title="'已降级为规则摘要：' + (insight.warnings[0] || '模型不可用')"
-            />
-            <p class="ins-summary">{{ insight.summary }}</p>
-            <div v-for="(h, i) in insight.highlights" :key="i" class="ins-item">
-              <span class="ins-name">{{ h.indicator }}</span>
-              <span class="ins-text">{{ h.text }}</span>
-              <span v-if="h.basis" class="ins-basis" :title="h.basis">依据</span>
+          <div ref="chatBox" class="chat">
+            <div v-if="!messages.length" class="chat-empty">
+              <p>问点什么，模型会自己决定查本次结果、历史趋势还是区间规则。</p>
+              <div class="chips">
+                <el-tag v-for="q in suggestions" :key="q" class="chip" @click="ask(q)">{{ q }}</el-tag>
+              </div>
             </div>
-            <div v-if="insight.trace && insight.trace.length" class="ins-trace">
-              <span class="ins-trace-label">
-                {{ insight.turns }} 轮 · 调用工具 {{ insight.trace.length }} 次
-              </span>
-              <el-tag v-for="(t, i) in insight.trace" :key="i" size="small" class="ins-tool">
-                {{ t.tool }}{{ t.ok ? '' : '(失败)' }}
-              </el-tag>
+
+            <div v-for="(m, i) in messages" :key="i" class="msg" :class="m.role">
+              <div v-if="m.role === 'user'" class="bubble user">{{ m.text }}</div>
+              <div v-else class="bubble assistant">
+                <el-alert
+                  v-if="m.data.degraded"
+                  type="warning" :closable="false" show-icon style="margin-bottom:10px"
+                  :title="'已降级为规则摘要：' + ((m.data.warnings && m.data.warnings[0]) || '模型不可用')"
+                />
+                <p class="ins-summary">{{ m.data.summary }}</p>
+                <div v-for="(h, j) in (m.data.highlights || [])" :key="j" class="ins-item">
+                  <span class="ins-name">{{ h.indicator }}</span>
+                  <span class="ins-text">{{ h.text }}</span>
+                  <span v-if="h.basis" class="ins-basis" :title="h.basis">依据</span>
+                </div>
+                <div v-if="m.data.trace && m.data.trace.length" class="ins-trace">
+                  <span class="ins-trace-label">{{ m.data.turns }} 轮 · 工具 {{ m.data.trace.length }} 次</span>
+                  <el-tag v-for="(t, j) in m.data.trace" :key="j" size="small" class="ins-tool">
+                    {{ t.tool }}{{ t.ok ? '' : '(失败)' }}
+                  </el-tag>
+                </div>
+                <p v-if="m.data.disclaimer" class="ins-disclaimer">{{ m.data.disclaimer }}</p>
+              </div>
             </div>
-            <p class="ins-disclaimer">{{ insight.disclaimer }}</p>
+
+            <div v-if="asking" class="msg assistant">
+              <div class="bubble assistant thinking">
+                <el-icon class="is-loading"><Loading /></el-icon>
+                正在查数据…
+              </div>
+            </div>
           </div>
 
-          <div v-else class="ins-empty">
-            让模型读一遍这次结果。深读模式会自己决定查哪些数据（本次结果、历史趋势、区间规则）。
+          <div class="ask-row">
+            <el-input
+              v-model="draft" type="textarea" :rows="2" resize="none" :disabled="asking"
+              placeholder="例如：这次有哪几项异常？和上次比变化大吗？（Enter 发送，Shift+Enter 换行）"
+              @keydown.enter.exact.prevent="send"
+            />
+            <el-button type="primary" :loading="asking" :disabled="!draft.trim()" @click="send">发送</el-button>
           </div>
         </el-card>
 
@@ -154,7 +168,7 @@
 
 <script setup>
 import { fileUrl } from '@/utils/file'
-import { ref, onMounted } from 'vue'
+import { ref, nextTick, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { recordApi } from '@/api/record'
@@ -165,23 +179,98 @@ import { ElMessage } from 'element-plus'
 const route = useRoute()
 const router = useRouter()
 
-const insight = ref(null)
-const insightLoading = ref(false)
-/** simple=证据包单次生成，agent=模型自己调工具 */
-const insightMode = ref('agent')
+const messages = ref([])
+const draft = ref('')
+/** 只表示「这一轮正在问」，避免与页面加载态同名 */
+const asking = ref(false)
+const chatBox = ref(null)
 
-async function loadInsight() {
-  if (!record.value) return
-  insightLoading.value = true
+const suggestions = [
+  '这次有哪几项超出参考区间？',
+  '和上次比有什么变化？',
+  '我的血糖最近怎么样？'
+]
+
+/** 会话只存在当前标签页：刷新还在，关掉就清空 */
+const chatKey = 'insight-chat-' + route.params.id
+
+function persistChat() {
   try {
-    const res = await insightApi.report(record.value.id, insightMode.value,
-      '请概括这次检查里需要关注的内容')
-    insight.value = res.data
+    sessionStorage.setItem(chatKey, JSON.stringify(messages.value))
+  } catch (e) { /* 配额满了就放弃缓存，不影响功能 */ }
+}
+
+function restoreChat() {
+  try {
+    const raw = sessionStorage.getItem(chatKey)
+    if (raw) messages.value = JSON.parse(raw) || []
   } catch (e) {
-    ElMessage.error('解读失败: ' + e.message)
-  } finally {
-    insightLoading.value = false
+    messages.value = []
   }
+  scrollToEnd()
+}
+
+/** 把一条解读压成纯文本，作为下一轮的上下文 */
+function flatten(data) {
+  const parts = [data.summary || '']
+  for (const h of data.highlights || []) {
+    parts.push((h.indicator || '') + ' ' + (h.text || ''))
+  }
+  return parts.join('\n')
+}
+
+/** 已完成的问答（不含本轮） */
+function historyPayload() {
+  return messages.value.map(m => ({
+    role: m.role,
+    content: m.role === 'user' ? m.text : flatten(m.data)
+  }))
+}
+
+async function ask(q) {
+  draft.value = q
+  await send()
+}
+
+async function send() {
+  const question = draft.value.trim()
+  if (!question || asking.value || !record.value) return
+
+  const history = historyPayload()
+  messages.value.push({ role: 'user', text: question })
+  draft.value = ''
+  asking.value = true
+  persistChat()
+  scrollToEnd()
+
+  try {
+    const res = await insightApi.report(record.value.id, 'agent', question, history)
+    messages.value.push({ role: 'assistant', data: res.data })
+  } catch (e) {
+    messages.value.push({
+      role: 'assistant',
+      data: {
+        summary: '这次请求失败了：' + e.message,
+        highlights: [], warnings: [e.message], degraded: true, disclaimer: ''
+      }
+    })
+  } finally {
+    asking.value = false
+    persistChat()
+    scrollToEnd()
+  }
+}
+
+function resetChat() {
+  messages.value = []
+  draft.value = ''
+  try { sessionStorage.removeItem(chatKey) } catch (e) { /* 忽略 */ }
+}
+
+function scrollToEnd() {
+  nextTick(() => {
+    if (chatBox.value) chatBox.value.scrollTop = chatBox.value.scrollHeight
+  })
 }
 
 const record = ref(null)
@@ -231,6 +320,7 @@ onMounted(async () => {
   try {
     const res = await recordApi.detail(route.params.id)
     record.value = res.data
+    restoreChat()
   } catch (e) { console.error(e) }
   loading.value = false
 })
@@ -240,19 +330,49 @@ onMounted(async () => {
 .ins-head { display: flex; align-items: center; justify-content: space-between; }
 .ins-actions { display: flex; align-items: center; gap: 10px; }
 .mode-hint { font-size: var(--font-xs); font-weight: 400; color: var(--text-hint); }
-.ins-summary { font-size: var(--font-md); line-height: 1.65; color: var(--text-primary); margin-bottom: 10px; }
+
+.chat { max-height: 460px; overflow-y: auto; padding-right: 4px; }
+.chat-empty { padding: 8px 0 4px; color: var(--text-hint); font-size: var(--font-sm); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.chip { cursor: pointer; }
+.chip:hover { color: var(--green-dark); border-color: var(--green); }
+
+.msg { display: flex; margin-bottom: 12px; }
+.msg.user { justify-content: flex-end; }
+.bubble { border-radius: var(--radius-md); padding: 10px 14px; }
+.bubble.user {
+  max-width: 86%;
+  background: var(--green-light);
+  color: var(--text-primary);
+  font-size: var(--font-sm);
+  line-height: 1.6;
+}
+.bubble.assistant {
+  width: 100%;
+  background: var(--bg-white);
+  border: 1px solid var(--border);
+}
+.bubble.thinking {
+  display: flex; align-items: center; gap: 8px;
+  color: var(--text-hint); font-size: var(--font-sm);
+}
+
+.ins-summary { font-size: var(--font-sm); line-height: 1.7; color: var(--text-primary); }
 .ins-item { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-top: 1px solid var(--border-light); }
-.ins-name { font-weight: 600; white-space: nowrap; }
+.ins-name { font-weight: 600; white-space: nowrap; font-size: var(--font-sm); }
 .ins-text { color: var(--text-secondary); font-size: var(--font-sm); }
 .ins-basis {
   font-size: var(--font-xs); color: var(--text-hint);
   border-bottom: 1px dashed var(--border-strong); cursor: help;
 }
-.ins-trace { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 12px; }
+.ins-trace { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
 .ins-trace-label { font-size: var(--font-xs); color: var(--text-hint); margin-right: 4px; }
 .ins-tool { font-family: ui-monospace, monospace; }
-.ins-disclaimer { margin-top: 12px; font-size: var(--font-xs); color: var(--text-hint); }
-.ins-empty { color: var(--text-hint); font-size: var(--font-sm); }
+.ins-disclaimer { margin-top: 10px; font-size: var(--font-xs); color: var(--text-hint); }
+
+.ask-row { display: flex; align-items: flex-end; gap: 10px; margin-top: 14px; }
+.ask-row .el-textarea { flex: 1; }
+
 .table-hint {
   font-size: 12px;
   color: #909399;

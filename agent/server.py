@@ -85,7 +85,8 @@ class Handler(BaseHTTPRequestHandler):
                 java_base = body.get("javaBase") or DEFAULT_JAVA_BASE
                 result = run_agent(
                     api_key, java_base, token,
-                    body.get("recordId"), body.get("question"), model)
+                    body.get("recordId"), body.get("question"), model,
+                    body.get("history") or [])
             elif self.path == "/agent/summarize":
                 result = run_simple(api_key, body.get("evidence") or {}, model)
             elif self.path == "/agent/followup-note":

@@ -95,6 +95,7 @@ public class InsightService {
             payload.put("recordId", request.getRecordId());
             payload.put("question", request.getQuestion());
             payload.put("javaBase", javaBase);
+            payload.put("history", trimmedHistory(request.getHistory()));
             if (!agentMode) {
                 payload.put("evidence", buildEvidence(record));
             }
@@ -200,6 +201,24 @@ public class InsightService {
             log.warn("提醒文案生成失败，使用规则文案: {}", e.getMessage());
         }
         return notes;
+    }
+
+    /**
+     * 对话历史：只带最近 8 轮，每轮截断到 600 字。
+     * 追问需要上下文，但把整段对话灌进去既贵又容易让模型照着旧结论编。
+     */
+    static List<Map<String, String>> trimmedHistory(List<InsightRequest.ChatTurn> history) {
+        if (history == null || history.isEmpty()) return List.of();
+        List<InsightRequest.ChatTurn> tail = history.subList(Math.max(0, history.size() - 8), history.size());
+        List<Map<String, String>> turns = new ArrayList<>();
+        for (InsightRequest.ChatTurn turn : tail) {
+            if (turn == null || turn.getContent() == null || turn.getContent().isBlank()) continue;
+            String role = "assistant".equalsIgnoreCase(turn.getRole()) ? "assistant" : "user";
+            String content = turn.getContent().trim();
+            turns.add(Map.of("role", role,
+                    "content", content.length() > 600 ? content.substring(0, 600) : content));
+        }
+        return turns;
     }
 
     /** 证据包：这次检查 + 异常项的历史序列，供 simple 模式一次性生成 */

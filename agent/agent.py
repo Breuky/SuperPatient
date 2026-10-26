@@ -62,13 +62,25 @@ def run_simple(api_key, evidence, model=None):
     return result
 
 
-def run_agent(api_key, java_base, token, record_id, question, model=None):
+def run_agent(api_key, java_base, token, record_id, question, model=None, history=None):
     """工具循环：模型自己决定调用哪些工具、调几次"""
     box = ToolBox(java_base, token)
-    messages = [
-        {"role": "system", "content": SYSTEM_AGENT},
-        {"role": "user", "content": "检查记录 id=%s\n问题：%s" % (record_id, question or "这次检查有什么需要关注的？")},
-    ]
+
+    # 之前的问答作为上下文；追问（「那上次呢」）必须带上，否则模型不知道指代什么
+    messages = [{"role": "system", "content": SYSTEM_AGENT}]
+    for turn in (history or [])[-8:]:
+        role = turn.get("role")
+        content = (turn.get("content") or "").strip()
+        if role not in ("user", "assistant") or not content:
+            continue
+        messages.append({"role": role, "content": content[:600]})
+
+    messages.append({"role": "user",
+                     "content": "当前检查记录 id=%s\n问题：%s"
+                                % (record_id, question or "这次检查有什么需要关注的？")})
+
+    # 首轮必须查数据；追问允许直接基于上文作答（上文本身来自已验证的工具结果）
+    require_tools = not history
 
     started = time.time()
     turns = 0
@@ -82,8 +94,8 @@ def run_agent(api_key, java_base, token, record_id, question, model=None):
         usage = _add_usage(usage, used)
         tool_calls = msg.get("tool_calls") or []
         if not tool_calls:
-            # 一次工具都没调就想作答 = 凭空编数字，拽回来重试一次
-            if not box.trace and nudged < 2:
+            # 首轮一次工具都没调就想作答 = 凭空编数字，拽回来重试一次
+            if require_tools and not box.trace and nudged < 2:
                 nudged += 1
                 messages.append({"role": "assistant", "content": msg.get("content") or ""})
                 messages.append({"role": "user", "content":
@@ -97,7 +109,7 @@ def run_agent(api_key, java_base, token, record_id, question, model=None):
                 "elapsed_ms": int((time.time() - started) * 1000),
                 "trace": box.trace,
                 "forced_finish": forced,
-                "no_tool_used": not box.trace,
+                "no_tool_used": require_tools and not box.trace,
                 "usage": usage,
             })
             return result
