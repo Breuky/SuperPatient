@@ -41,7 +41,7 @@
                 <el-alert
                   v-if="m.data.degraded"
                   type="warning" :closable="false" show-icon style="margin-bottom:10px"
-                  :title="'已降级为规则摘要：' + ((m.data.warnings && m.data.warnings[0]) || '模型不可用')"
+                  :title="(m.data.warnings && m.data.warnings[0]) || '模型不可用，已降级为规则摘要'"
                 />
                 <p class="ins-summary">{{ m.data.summary }}</p>
                 <div v-for="(h, j) in (m.data.highlights || [])" :key="j" class="ins-item">
