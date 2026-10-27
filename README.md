@@ -1,5 +1,7 @@
 # SuperPatient
 
+[![CI](https://github.com/Breuky/SuperPatient/actions/workflows/ci.yml/badge.svg)](https://github.com/Breuky/SuperPatient/actions/workflows/ci.yml)
+
 一个长期记录自己检查检验指标的追踪系统，适合体检、慢病随访这类需要**持续对比同一指标**的场景。
 
 核心不是「录入数值 + 折线图」，而是把**非结构化化验单照片**变成**可比较、可追踪的结构化指标**。
