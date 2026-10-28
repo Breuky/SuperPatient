@@ -90,7 +90,7 @@
     <div class="ask-row">
       <el-input
         v-model="draft" type="textarea" :rows="2" resize="none" :disabled="asking"
-        :placeholder="placeholder"
+        :placeholder="placeholderText"
         @keydown.enter.exact.prevent="send"
       />
       <el-button type="primary" :loading="asking" :disabled="!draft.trim()" @click="send">发送</el-button>
@@ -107,7 +107,7 @@ const props = defineProps({
   recordId: { type: Number, default: null },
   title: { type: String, default: 'AI 解读' },
   emptyHint: { type: String, default: '' },
-  placeholder: { type: String, default: '例如：这次有哪几项异常？和上次比变化大吗？（Enter 发送，Shift+Enter 换行）' }
+  placeholder: { type: String, default: '' }
 })
 
 const messages = ref([])
@@ -116,6 +116,9 @@ const asking = ref(false)
 const chatBox = ref(null)
 
 const scopeText = computed(() => props.recordId ? '本次记录' : '全部记录')
+const placeholderText = computed(() => props.placeholder || (props.recordId
+  ? '例如：和上次比哪些项变差了？这次哪些项没查？（Enter 发送）'
+  : '例如：我一共查过几次检查？哪项指标一直偏高？（Enter 发送）'))
 const suggestions = computed(() => props.recordId
   // 数值和异常标记页面上已经有了，这里引导问「对比 / 来源 / 缺项」这类看不出来的
   ? ['和上次比哪些项变差了？', '这几项的参考区间为什么和上次不一样？', '这次哪些项没查？']

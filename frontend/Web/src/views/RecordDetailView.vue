@@ -167,7 +167,6 @@ onMounted(async () => {
   try {
     const res = await recordApi.detail(route.params.id)
     record.value = res.data
-    restoreChat()
   } catch (e) { console.error(e) }
   loading.value = false
 })

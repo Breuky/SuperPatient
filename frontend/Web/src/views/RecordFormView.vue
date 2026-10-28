@@ -379,6 +379,12 @@ onMounted(async () => {
 .ind-header { display: flex; align-items: center; justify-content: space-between; }
 .parse-actions { display: flex; align-items: center; gap: 12px; }
 .keep-image { margin-left: 12px; }
+
+/* 化验单是竖长的，默认缩略图会被挤成细条 */
+:deep(.el-upload-list--picture .el-upload-list__item-thumbnail) {
+  object-fit: cover;
+  object-position: top;
+}
 .ind-hint { font-size: 12px; color: #909399; font-weight: 400; }
 .group-title { font-size: 13px; color: #606266; font-weight: 600; margin: 8px 0 4px; }
 .group-title.clickable { cursor: pointer; color: #909399; font-weight: 400; }

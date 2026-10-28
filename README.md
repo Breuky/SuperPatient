@@ -357,28 +357,15 @@ export AGENT_API_KEY=sk-...                         # 留空 = 复用 DASHSCOPE_
 
 ## 界面
 
-截图放在 `docs/screenshots/`（拍摄要求见该目录 README）。放好后把下面这段注释取消即可显示：
-
-<!--
 | 我的记录 | 新增检查 |
 |---|---|
 | ![](docs/screenshots/01-records.png) | ![](docs/screenshots/02-form.png) |
-| **校对页** | **趋势分析** |
+| **校对页**：模型只给候选，勾选的行才进表单 | **趋势分析**：参考区间按每次报告分段绘制 |
 | ![](docs/screenshots/03-review.png) | ![](docs/screenshots/04-trend.png) |
-| **AI 解读（对话）** | **Agent 调试页** |
+| **记录详情 · 追问**：模型自己选工具 | **Agent 调试**：`/insight-logs`，可展开看工具链 |
 | ![](docs/screenshots/05-agent.png) | ![](docs/screenshots/06-debug.png) |
--->
 
-| 文件名 | 画面 | 要看得出什么 |
-|---|---|---|
-| 01-records.png | 我的记录 | 四张概览卡、随访提醒条、分类/日期筛选 |
-| 02-form.png | 新增检查 | 选图区、「保留报告照片」勾选（默认不勾）、精读开关 |
-| 03-review.png | 校对弹窗 | 已匹配 / 未匹配 / 两次不一致的标记 |
-| 04-trend.png | 趋势分析 | 一条曲线有多段参考带，说明区间换过 |
-| 05-agent.png | 记录详情 · AI 解读 | 回答 + 工具调用标签；越界问题的三段式提示 |
-| 06-debug.png | Agent 调试（`/insight-logs`） | 展开一行能看到工具名、参数、耗时 |
-
-两个界面细节容易漏：新增检查默认**不保存原图**（勾选才落盘）；「Agent 调试」页**不在侧栏**，直接访问 `/insight-logs`。
+两个界面细节：新增检查默认**不保存原图**（勾选「保留报告照片」才落盘，且只有点保存时才上传）；「Agent 调试」页**不在侧栏**，直接访问 `/insight-logs`。
 
 ## 接口文档
 
