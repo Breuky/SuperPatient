@@ -35,9 +35,18 @@ public class ReferenceRangeService {
     /** 用户上下文：性别与年龄（年龄算不出时为 null） */
     public record UserContext(Integer gender, Integer age) {
         public static UserContext of(User user) {
+            return of(user, null);
+        }
+
+        /**
+         * 年龄按「检查当天」算，不是按今天。
+         * 补录历史单据时用今天的年龄会跨档（如刚过 30 岁生日，按 30-45 段算去年的单子）。
+         */
+        public static UserContext of(User user, LocalDate examDate) {
             if (user == null) return new UserContext(null, null);
+            LocalDate base = examDate != null ? examDate : LocalDate.now();
             Integer age = user.getBirthDate() == null ? null
-                    : (int) ChronoUnit.YEARS.between(user.getBirthDate(), LocalDate.now());
+                    : (int) ChronoUnit.YEARS.between(user.getBirthDate(), base);
             return new UserContext(user.getGender(), age);
         }
     }

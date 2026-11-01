@@ -1,9 +1,11 @@
 package com.superpatient.service;
 
 import com.superpatient.entity.ReferenceRange;
+import com.superpatient.entity.User;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,6 +27,18 @@ class ReferenceRangeServiceTest {
             rule(0, 115, 150, 10, 18, null),
             rule(null, 110, 160, 10, 0, 17)
     );
+
+    @Test
+    void userContextUsesExamDateInsteadOfToday() {
+        User user = new User();
+        user.setBirthDate(LocalDate.of(1996, 5, 1));
+
+        // 2020-03-10 时 23 岁；如果按今天算会是 30 岁，会跨到 30-45 段
+        ReferenceRangeService.UserContext ctx =
+                ReferenceRangeService.UserContext.of(user, LocalDate.of(2020, 3, 10));
+
+        assertEquals(23, ctx.age());
+    }
 
     @Test
     void picksRangeByGenderForAdults() {

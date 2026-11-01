@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -52,7 +53,7 @@ public class RecordService {
         vo.setImageUrl(record.getImageUrl());
 
         ReferenceRangeService.UserContext ctx = ReferenceRangeService.UserContext.of(
-                userMapper.findById(record.getUserId()));
+                userMapper.findById(record.getUserId()), toLocalDate(record.getExamDate()));
 
         List<ExamValue> rawValues = valueMapper.findByRecordId(record.getId());
         List<Integer> indicatorIds = rawValues.stream().map(ExamValue::getIndicatorId).distinct().toList();
@@ -121,7 +122,7 @@ public class RecordService {
         recordMapper.insert(record);
 
         ReferenceRangeService.UserContext ctx = ReferenceRangeService.UserContext.of(
-                userMapper.findById(userId));
+                userMapper.findById(userId), toLocalDate(record.getExamDate()));
         List<ExamValue> values = buildValues(record.getId(), request.getValues(), ctx, userId);
         if (!values.isEmpty()) {
             valueMapper.batchInsert(values);
@@ -171,8 +172,10 @@ public class RecordService {
 
         if (request.getValues() != null) {
             valueMapper.deleteByRecordId(id);
+            LocalDateTime examDate = record.getExamDate() != null
+                    ? record.getExamDate() : existing.getExamDate();
             ReferenceRangeService.UserContext ctx = ReferenceRangeService.UserContext.of(
-                    userMapper.findById(existing.getUserId()));
+                    userMapper.findById(existing.getUserId()), toLocalDate(examDate));
             List<ExamValue> values = buildValues(id, request.getValues(), ctx, existing.getUserId());
             if (!values.isEmpty()) {
                 valueMapper.batchInsert(values);
@@ -258,6 +261,11 @@ public class RecordService {
         if (max != null && value.compareTo(max) > 0) return 1;
         if (min != null && value.compareTo(min) < 0) return 2;
         return 0;
+    }
+
+    /** 参考区间按「检查当天」的年龄算，不能用今天：补录历史单据会跨年龄段 */
+    private static LocalDate toLocalDate(LocalDateTime value) {
+        return value == null ? null : value.toLocalDate();
     }
 
     private String toAbnormalText(int isAbnormal) {
