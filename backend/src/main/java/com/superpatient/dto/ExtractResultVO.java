@@ -32,6 +32,8 @@ public class ExtractResultVO {
         private BigDecimal refMin;
         private BigDecimal refMax;
         private String refText;
+        /** 区间来源：report=报告印刷 / rule=性别年龄规则 / default=指标默认值 */
+        private String refSource;
         private Integer isAbnormal;
         /** exact / alias / contains */
         private String matchType;

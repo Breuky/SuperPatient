@@ -243,8 +243,11 @@ public class RecordService {
     private ReferenceRangeService.Resolved effectiveRange(ValueItem item, ExamIndicator ind,
                                                           ReferenceRangeService.UserContext ctx) {
         if (item.getRefMin() != null || item.getRefMax() != null) {
+            // 带上来源：报告没印区间时，候选里的区间其实是规则算的（source=rule）
+            String source = item.getRefSource() != null && !item.getRefSource().isBlank()
+                    ? item.getRefSource() : "report";
             return new ReferenceRangeService.Resolved(item.getRefMin(), item.getRefMax(),
-                    item.getRefText(), "report");
+                    item.getRefText(), source);
         }
         ReferenceRangeService.Resolved rule = referenceRangeService.resolve(ind.getId(), ctx);
         if (rule != null) {

@@ -12,6 +12,8 @@ public class ValueItem {
     private BigDecimal refMin;
     private BigDecimal refMax;
     private String refText;
+    /** 区间来源，来自校对页候选；缺省视为 report */
+    private String refSource;
     private String rawName;
     private String rawUnit;
 }

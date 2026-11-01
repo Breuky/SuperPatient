@@ -77,6 +77,7 @@ class ReportExtractionServiceTest {
         assertNotNull(hgb.getWarning());
         assertEquals("HGB", hgb.getRawName());
         assertEquals("g/L", hgb.getUnit());
+        assertEquals("report", hgb.getRefSource(), "报告印了区间，来源应是 report");
 
         ExtractResultVO.Candidate wbc = result.getCandidates().get(1);
         assertEquals(2, wbc.getIsAbnormal(), "3.2 低于 4.0 应为偏低");
@@ -98,6 +99,23 @@ class ReportExtractionServiceTest {
 
         assertEquals(0, new BigDecimal("4").compareTo(c.getRefMin()));
         assertEquals(1, c.getIsAbnormal());
+        assertEquals("default", c.getRefSource(), "既没报告区间也没规则时，来源是 default");
+    }
+
+    @Test
+    void marksRuleAsSourceWhenReportHasNoRange() throws Exception {
+        stubImageAndPool();
+        when(llm.extract(any(), any(), any())).thenReturn("""
+                {"items":[{"name":"白细胞计数","value":"11.0","unit":"10^9/L"}]}
+                """);
+        when(llm.displayName()).thenReturn("mock");
+        when(referenceRangeService.resolve(anyInt(), any()))
+                .thenReturn(new ReferenceRangeService.Resolved(
+                        new BigDecimal("4.0"), new BigDecimal("10.0"), null, "rule"));
+
+        ExtractResultVO.Candidate c = service.parse("/api/files/1", 1).getCandidates().get(0);
+
+        assertEquals("rule", c.getRefSource(), "规则算出来的区间不能标成报告标注");
     }
 
     @Test

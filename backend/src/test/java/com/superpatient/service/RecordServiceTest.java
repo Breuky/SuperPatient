@@ -120,6 +120,21 @@ class RecordServiceTest {
     }
 
     @Test
+    void keepsRangeSourceWhenCandidateCameFromRule() {
+        when(indicatorMapper.findById(1)).thenReturn(indicator(1, "4", "10"));
+        ValueItem it = item(1, "6.8");
+        it.setRefMin(new BigDecimal("3.9"));
+        it.setRefMax(new BigDecimal("6.1"));
+        it.setRefSource("rule");
+
+        recordService.create(request(it));
+
+        ExamValue v = capturedValues().get(0);
+        assertEquals("rule", v.getRefSource(),
+                "规则推算出来的区间不能被标成「报告标注」");
+    }
+
+    @Test
     void rejectsBlankExamDate() {
         RecordCreateRequest request = request();
         request.setExamDate("");

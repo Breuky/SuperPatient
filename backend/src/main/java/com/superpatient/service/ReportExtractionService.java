@@ -307,7 +307,8 @@ public class ReportExtractionService {
             }
         }
 
-        BigDecimal[] range = resolveRange(item, indicator, ctx);
+        ReferenceRangeService.Resolved resolved = resolveRange(item, indicator, ctx);
+        BigDecimal[] range = new BigDecimal[]{resolved.min(), resolved.max()};
 
         if (value == null) {
             c.setValueText(rawValue);
@@ -333,6 +334,8 @@ public class ReportExtractionService {
         c.setRefMin(range[0]);
         c.setRefMax(range[1]);
         c.setRefText(text(item, "refText"));
+        // 来源要透传：报告没印区间时这里其实是 rule 算出来的，不能一律当 report
+        c.setRefSource(resolved.source());
         c.setIsAbnormal(calcAbnormal(value, range[0], range[1]));
 
         // 量级 / 基线校验：只提示，不改值
@@ -348,8 +351,8 @@ public class ReportExtractionService {
     }
 
     /** 优先用报告印刷的区间，其次按性别/年龄规则，最后回落指标库默认值 */
-    private BigDecimal[] resolveRange(JsonNode item, ExamIndicator indicator,
-                                      ReferenceRangeService.UserContext ctx) {
+    private ReferenceRangeService.Resolved resolveRange(JsonNode item, ExamIndicator indicator,
+                                                        ReferenceRangeService.UserContext ctx) {
         BigDecimal min = decimal(item.get("refMin"));
         BigDecimal max = decimal(item.get("refMax"));
         String refText = text(item, "refText");
@@ -364,11 +367,12 @@ public class ReportExtractionService {
         if (min == null && max == null) {
             ReferenceRangeService.Resolved rule = referenceRangeService.resolve(indicator.getId(), ctx);
             if (rule != null) {
-                return new BigDecimal[]{rule.min(), rule.max()};
+                return rule;
             }
-            return new BigDecimal[]{indicator.getNormalMin(), indicator.getNormalMax()};
+            return new ReferenceRangeService.Resolved(indicator.getNormalMin(),
+                    indicator.getNormalMax(), null, "default");
         }
-        return new BigDecimal[]{min, max};
+        return new ReferenceRangeService.Resolved(min, max, refText, "report");
     }
 
     private int calcAbnormal(BigDecimal value, BigDecimal min, BigDecimal max) {

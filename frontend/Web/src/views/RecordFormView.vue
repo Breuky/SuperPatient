@@ -367,6 +367,7 @@ onMounted(async () => {
             refMin: v.refMin,
             refMax: v.refMax,
             refText: v.refText,
+            refSource: v.refSource,
             rawName: v.rawName,
             rawUnit: v.rawUnit
           }
