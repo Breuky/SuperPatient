@@ -114,7 +114,7 @@ public class RecordService {
         ExamRecord record = new ExamRecord();
         record.setUserId(userId);
         record.setCategoryId(request.getCategoryId());
-        record.setExamDate(LocalDateTime.parse(request.getExamDate()));
+        record.setExamDate(parseExamDate(request.getExamDate()));
         record.setHospital(request.getHospital());
         record.setDoctor(request.getDoctor());
         record.setNotes(request.getNotes());
@@ -162,7 +162,7 @@ public class RecordService {
         ExamRecord record = new ExamRecord();
         record.setId(id);
         if (request.getExamDate() != null && !request.getExamDate().isEmpty()) {
-            record.setExamDate(LocalDateTime.parse(request.getExamDate()));
+            record.setExamDate(parseExamDate(request.getExamDate()));
         }
         record.setHospital(request.getHospital());
         record.setDoctor(request.getDoctor());
@@ -261,6 +261,22 @@ public class RecordService {
         if (max != null && value.compareTo(max) > 0) return 1;
         if (min != null && value.compareTo(min) < 0) return 2;
         return 0;
+    }
+
+    /**
+     * 检查日期是必填：库里 exam_date 是 NOT NULL，但请求体为空时
+     * LocalDateTime.parse 会抛 DateTimeParseException，被兜底成「服务器内部错误」。
+     * 这里提前拦成业务提示。
+     */
+    private static LocalDateTime parseExamDate(String raw) {
+        if (raw == null || raw.isBlank()) {
+            throw new BusinessException("请选择检查日期");
+        }
+        try {
+            return LocalDateTime.parse(raw);
+        } catch (java.time.format.DateTimeParseException e) {
+            throw new BusinessException("检查日期格式不正确，应为 2026-03-28T09:30");
+        }
     }
 
     /** 参考区间按「检查当天」的年龄算，不能用今天：补录历史单据会跨年龄段 */

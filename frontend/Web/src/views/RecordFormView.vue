@@ -304,6 +304,7 @@ function toDateTime(date) {
 
 async function handleSave() {
   if (!form.categoryId) return alert('请选择检查类型')
+  if (!form.examDate) return alert('请选择检查日期')
   try {
     // 勾了「保留」但还没上传（用户没点 AI 识别）：保存时补一次上传，否则图片会丢
     if (keepImage.value && selectedFile.value && !uploadedUrl.value) {
