@@ -119,6 +119,26 @@ class RecordServiceTest {
         assertTrue(e.getMessage().contains("无权"));
     }
 
+    @Test
+    void rejectsBlankExamDate() {
+        RecordCreateRequest request = request();
+        request.setExamDate("");
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> recordService.create(request));
+        assertTrue(e.getMessage().contains("请选择检查日期"));
+    }
+
+    @Test
+    void rejectsFutureExamDate() {
+        RecordCreateRequest request = request();
+        request.setExamDate("2099-01-01T10:00:00");
+
+        BusinessException e = assertThrows(BusinessException.class,
+                () -> recordService.create(request));
+        assertTrue(e.getMessage().contains("不能晚于今天"));
+    }
+
     private List<ExamValue> capturedValues() {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<List<ExamValue>> captor = ArgumentCaptor.forClass(List.class);

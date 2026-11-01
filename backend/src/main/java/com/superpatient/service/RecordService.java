@@ -272,11 +272,16 @@ public class RecordService {
         if (raw == null || raw.isBlank()) {
             throw new BusinessException("请选择检查日期");
         }
+        LocalDateTime date;
         try {
-            return LocalDateTime.parse(raw);
+            date = LocalDateTime.parse(raw);
         } catch (java.time.format.DateTimeParseException e) {
             throw new BusinessException("检查日期格式不正确，应为 2026-03-28T09:30");
         }
+        if (date.toLocalDate().isAfter(LocalDate.now())) {
+            throw new BusinessException("检查日期不能晚于今天");
+        }
+        return date;
     }
 
     /** 参考区间按「检查当天」的年龄算，不能用今天：补录历史单据会跨年龄段 */

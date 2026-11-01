@@ -27,6 +27,8 @@
               placeholder="选择日期"
               format="YYYY-MM-DD HH:mm"
               value-format="YYYY-MM-DDTHH:mm"
+              :disabled-date="disableFutureDate"
+              :clearable="false"
               style="width:100%"
             />
           </el-form-item>
