@@ -9,6 +9,8 @@ import time
 import urllib.parse
 import urllib.request
 
+from departments import suggest as suggest_departments
+
 
 class ToolError(Exception):
     """工具执行失败，会把原因回给模型让它换策略"""
@@ -90,6 +92,21 @@ class ToolBox:
                     "type": "object",
                     "properties": {"indicator_id": {"type": "integer"}},
                     "required": ["indicator_id"],
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "suggest_departments",
+                "description": "根据用户历史异常指标推荐该去哪个科室（纯规则映射，不涉及诊断）。"
+                               "问「该挂什么科」「看哪个科室」「需要去医院吗」时用它。"
+                               "返回候选科室 + 依据 + 依据的异常指标，不要自己编科室名。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "limit": {"type": "integer", "description": "参考多少条异常指标，默认 10"},
+                    },
                 },
             },
         },
@@ -211,3 +228,20 @@ class ToolBox:
         return [{"gender": r.get("gender"), "age_min": r.get("ageMin"), "age_max": r.get("ageMax"),
                  "ref_min": r.get("refMin"), "ref_max": r.get("refMax"), "source": r.get("source")}
                 for r in data]
+
+    def _suggest_departments(self, limit=10):
+        """按历史异常指标推科室：指标来自接口，映射来自本地规则表，全程不调模型"""
+        data = self._get("/api/statistics/overview") or {}
+        top = (data.get("topAbnormal") or [])[: max(1, int(limit or 10))]
+        if not top:
+            return {"departments": [], "based_on": [],
+                    "note": "没有异常记录，无法按指标推荐科室"}
+
+        mapped = suggest_departments([{"name": x.get("name")} for x in top])
+        return {
+            "based_on": [{"name": x.get("name"), "unit": x.get("unit"),
+                          "times": x.get("times")} for x in top],
+            "departments": mapped["departments"],
+            "unmapped": mapped["unmapped"],
+            "note": "推荐仅基于历史异常指标，不构成诊断；具体以医院分诊为准",
+        }
