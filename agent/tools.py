@@ -265,8 +265,10 @@ class ToolBox:
                 "address": h.get("address"),
                 "booking_url": h.get("bookingUrl"),
                 "verified": bool(h.get("verified")),
+                "department_verified": bool(h.get("departmentVerified")),
             } for h in data],
-            "note": "仅来自白名单；verified=false 表示资质尚未人工核对，不要描述为「最好」",
+            "note": "仅来自白名单。verified=医院等级已核对；department_verified=该科室资质已核对。"
+                    "未核对的不要说成「最好」，也不要承诺号源",
         }
 
     def _suggest_departments(self, limit=10):

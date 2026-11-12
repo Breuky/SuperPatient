@@ -13,7 +13,8 @@
                hd.department   AS department,
                hd.specialty_level AS specialtyLevel,
                COALESCE(hd.source_url, h.source_url) AS sourceUrl,
-               (hd.source_url IS NOT NULL AND hd.verified_at IS NOT NULL) AS verified
+               (h.source_url IS NOT NULL AND h.verified_at IS NOT NULL) AS verified,
+               (hd.source_url IS NOT NULL AND hd.verified_at IS NOT NULL) AS departmentVerified
         FROM hospital h
         JOIN hospital_department hd ON hd.hospital_id = h.id
         WHERE h.status = 1
