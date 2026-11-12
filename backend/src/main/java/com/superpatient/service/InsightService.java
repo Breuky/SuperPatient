@@ -331,6 +331,8 @@ public class InsightService {
         vo.setOutOfScope(Boolean.TRUE.equals(response.get("out_of_scope")));
         vo.setScopeNote((String) response.get("scope_note"));
         vo.setOffTopic(Boolean.TRUE.equals(response.get("off_topic")));
+        Object capability = response.get("capability");
+        if (capability != null) vo.setCapability(String.valueOf(capability));
         for (Object item : (List<Object>) response.getOrDefault("suggestions", List.of())) {
             vo.getSuggestions().add(String.valueOf(item));
         }

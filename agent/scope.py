@@ -1,21 +1,54 @@
 # -*- coding: utf-8 -*-
 """
-问题范围判定：先看这句话是不是关于化验数据的。
+问题能力分级：在模型之前判定「这句话最多允许答到什么程度」。
 
-放在模型之前，是因为"今天天气如何"这类问题不该花 6 秒和一次工具调用去回答，
-更不该被说成"医学判断"。规则确定性、可单测，命中即直接回固定话术。
+原来只有「是否离题」一个二值判断，模型再怎么守规矩也只是提示词约束。
+现在改成四级上限，规则确定、可单测，模型只能在限额内作答，不能自行升级：
+
+    L0 数据查询   只要事实：数值、次数、时间、有没有
+    L1 数据解释   在 L0 之上，可以说与参考区间的关系、与过去相比的变化
+    L2 医学判断   病因、危害、严重程度、用药、复查 —— 只给数据，不给结论
+    L3 服务代办   挂号、预约、问诊、缴费 —— 系统没有这个能力，直接给入口
+
+顺序即优先级：服务 > 医学判断 > 解释 > 查询。命中更严的一级就按那一级封顶。
 """
+
+L0_DATA = "L0"
+L1_EXPLAIN = "L1"
+L2_MEDICAL = "L2"
+L3_SERVICE = "L3"
+OFF_TOPIC = "OFF_TOPIC"
+
+CAPABILITIES = (L0_DATA, L1_EXPLAIN, L2_MEDICAL, L3_SERVICE)
+
+LABELS = {
+    L0_DATA: "数据查询",
+    L1_EXPLAIN: "数据解释",
+    L2_MEDICAL: "医学判断",
+    L3_SERVICE: "服务代办",
+    OFF_TOPIC: "无关话题",
+}
+
+# 给模型看的上限说明：只写「能做到什么」，不写「应该怎么措辞」
+CEILINGS = {
+    L0_DATA: "L0 数据查询：只报数值、次数、时间、归属哪次检查；不解释含义。",
+    L1_EXPLAIN: "L1 数据解释：可说明数值与参考区间的关系、与过去几次相比的变化；不下医学结论。",
+    L2_MEDICAL: "L2 医学判断：只给与问题相关的数据事实，不给结论；必须置 out_of_scope=true。",
+    L3_SERVICE: "L3 服务代办：系统不具备代办能力，只说明能看什么数据。",
+}
 
 # 出现这些词，认为和检查数据有关，交给模型
 DOMAIN_WORDS = (
     "检查", "化验", "报告", "指标", "数值", "结果", "参考", "区间", "单位",
     "正常", "异常", "偏高", "偏低", "升高", "降低", "超标", "趋势", "变化",
     "历史", "记录", "上次", "上一次", "最近", "多久", "间隔", "医院", "科室",
-    "复查", "随访", "挂号", "门诊", "住院",
+    "复查", "随访", "挂号", "挂", "问诊", "预约", "门诊", "住院", "查过", "做过",
     "血糖", "血脂", "血压", "肝", "肾", "血常规", "尿", "白细胞", "红细胞",
     "血小板", "血红蛋白", "胆固醇", "甘油三酯", "转氨酶", "肌酐", "尿酸",
     "蛋白", "钾", "钠", "钙", "糖化", "CT", "B超", "超声", "影像",
     "药", "剂量", "吃", "忌口",
+    "糖尿病", "高血压", "贫血", "肝炎", "肾炎", "甲状腺", "结节", "感染",
+    "要紧",
 )
 
 # 明确的无关话题，命中即拒答（不需要再看别的）
@@ -26,9 +59,53 @@ OFF_TOPIC_HINTS = (
     "几点", "几号", "星期几", "等于几",
 )
 
+# L3：需要人/机构去执行的动作，系统只给入口
+SERVICE_WORDS = (
+    "挂号", "挂个", "约号", "预约", "问诊", "找医生", "看医生", "买药", "买点药",
+    "缴费", "医保", "加号", "陪诊", "帮我看病", "代问",
+)
+
+# L2 强信号：出现即封顶到医学判断，不受趋势词影响
+MEDICAL_STRONG = (
+    "危害", "严重", "要紧", "什么病", "确诊", "诊断", "治疗", "怎么治",
+    "吃什么", "吃药", "用药", "剂量", "副作用", "忌口", "预后", "风险",
+    "并发症", "传染", "遗传", "能不能吃", "能不能喝", "需要治疗", "要治疗",
+    "复查", "随访",
+)
+
+# L2 弱信号：只有在没有趋势/比较语境时才算医学判断（"是不是比上次高" 是数据解释）
+MEDICAL_WEAK = (
+    "是不是", "会不会", "需不需要", "要不要", "有没有影响", "有关系", "导致",
+)
+
+# 阈值类问题（"多少算高"）问的不是自己的数据，是医学标准 —— 按医学判断封顶
+THRESHOLD_HINTS = ("算高", "算低", "多少算", "才算", "超过多少", "低于多少", "多少正常")
+
+# L1：与区间比、与时间比
+EXPLAIN_WORDS = (
+    "正常", "异常", "偏高", "偏低", "超标", "超出", "高于", "低于", "达标",
+    "区间内", "合格", "波动",
+)
+TREND_HINTS = (
+    "比上次", "比上一次", "比之前", "变化", "趋势", "升高", "降低", "高了",
+    "低了", "高还是低", "升还是降", "最近怎么样",
+)
+
+# L0：只问事实
+DATA_WORDS = (
+    "多少", "几次", "哪几次", "哪几项", "哪些项", "什么时候", "哪一天", "哪年",
+    "有没有", "是否", "多久没", "几天", "数值", "单位", "参考区间", "参考范围",
+    "第几次",
+)
+
 OFF_TOPIC_REPLY = (
     "我只能回答与你自己的检查记录有关的问题，"
     "比如某项数值是多少、和上次比有没有变化。如果你是想问某项指标，直接说指标名就行。"
+)
+
+SERVICE_REPLY = (
+    "我这边只能查看和分析你自己的检查记录，不能帮你挂号、预约或问诊。"
+    "需要就诊的话，请通过医院或正规平台预约；我可以先把这次的异常项整理给你。"
 )
 
 OFF_TOPIC_SUGGESTIONS = [
@@ -37,12 +114,58 @@ OFF_TOPIC_SUGGESTIONS = [
     "最近一次检查是什么时候？",
 ]
 
+SERVICE_SUGGESTIONS = [
+    "这次有哪几项超出参考区间？",
+    "这个指标最近几次的变化",
+]
+
+
+def _hit(text, words):
+    return any(w in text for w in words)
+
+
+def classify(question):
+    """返回该问题允许的最高能力等级。纯规则，不调模型。"""
+    q = (question or "").strip()
+    if not q:
+        return OFF_TOPIC
+    if _hit(q, OFF_TOPIC_HINTS):
+        return OFF_TOPIC
+    if not _hit(q, DOMAIN_WORDS):
+        return OFF_TOPIC
+
+    if _hit(q, SERVICE_WORDS):
+        return L3_SERVICE
+
+    if _hit(q, THRESHOLD_HINTS):
+        return L2_MEDICAL
+    if _hit(q, MEDICAL_STRONG):
+        return L2_MEDICAL
+    # "是不是比上次高了" 问的是变化，不该因为「是不是」被降成医学判断
+    if _hit(q, MEDICAL_WEAK) and not _hit(q, TREND_HINTS):
+        return L2_MEDICAL
+
+    if _hit(q, TREND_HINTS) or _hit(q, EXPLAIN_WORDS):
+        return L1_EXPLAIN
+    if _hit(q, DATA_WORDS):
+        return L0_DATA
+    # 有领域词但看不出具体诉求（"帮我看看检查"），按解释给，信息量最大且仍不越界
+    return L1_EXPLAIN
+
+
+def is_tool_only(capability):
+    """L0 只需要取数，不需要模型解释"""
+    return capability == L0_DATA
+
+
+def ceiling_hint(capability):
+    return CEILINGS.get(capability, CEILINGS[L1_EXPLAIN])
+
+
+def label(capability):
+    return LABELS.get(capability, "")
+
 
 def is_off_topic(question):
     """没有领域词 = 与检查无关。宁可多引导一句，也不要硬凑答案。"""
-    q = (question or "").strip()
-    if not q:
-        return True
-    if any(w in q for w in OFF_TOPIC_HINTS):
-        return True
-    return not any(w in q for w in DOMAIN_WORDS)
+    return classify(question) == OFF_TOPIC

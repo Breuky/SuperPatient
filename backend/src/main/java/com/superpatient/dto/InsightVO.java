@@ -21,6 +21,11 @@ public class InsightVO {
     private String scopeNote;
     /** 问题与检查数据完全无关（天气、写诗、编程…） */
     private boolean offTopic;
+    /**
+     * 规则层给出的能力上限：L0 数据查询 / L1 数据解释 / L2 医学判断 / L3 服务代办。
+     * 模型只能在此上限内作答，前端据此切换展示形态（免责、拒答、服务入口）。
+     */
+    private String capability;
     /** 无关时可点的示例问题 */
     private List<String> suggestions = new ArrayList<>();
     /** agent 模式下了几轮 */

@@ -9,7 +9,9 @@ import time
 
 from llm import LlmError, chat, parse_json_block
 from prompts import FORBIDDEN, SYSTEM_AGENT, SYSTEM_SIMPLE
-from scope import OFF_TOPIC_REPLY, OFF_TOPIC_SUGGESTIONS, is_off_topic
+from scope import (L1_EXPLAIN, L2_MEDICAL, L3_SERVICE, OFF_TOPIC, OFF_TOPIC_REPLY,
+                   OFF_TOPIC_SUGGESTIONS, SERVICE_REPLY, SERVICE_SUGGESTIONS,
+                   ceiling_hint, classify)
 from tools import ToolBox
 
 MAX_TURNS = 6
@@ -20,8 +22,15 @@ DEADLINE_SECONDS = 20
 _REQUIRED_UNSUPPORTED = set()
 
 
-def _sanitize(parsed):
-    """越界内容直接丢弃：宁可少说，不可给医疗建议"""
+DEFAULT_SCOPE_NOTE = "涉及医学判断，我只提供与它相关的数据"
+
+
+def _sanitize(parsed, capability=None):
+    """越界内容直接丢弃：宁可少说，不可给医疗建议。
+
+    capability 是规则层给出的上限。模型只能在上限内作答，不能自行放宽：
+    判成 L2 的问题，无论模型写了什么，正文都替换成范围说明。
+    """
     if not parsed:
         return {"summary": "模型没有返回可解析的结果", "highlights": [], "warnings": ["解析失败"]}
 
@@ -57,8 +66,12 @@ def _sanitize(parsed):
     out_of_scope = bool(parsed.get("out_of_scope")) or summary.startswith(marker)
     if summary.startswith(marker):
         summary = summary[len(marker):].strip()
+    # 规则层封顶：模型自己没置位也要按 L2 处理，防止「说得很像数据结论」
+    if capability == L2_MEDICAL:
+        out_of_scope = True
+        summary = "这属于医学判断，我这边只能提供数据。"
     if out_of_scope and not scope_note:
-        scope_note = "涉及医学判断，我只提供与它相关的数据"
+        scope_note = DEFAULT_SCOPE_NOTE
     if not out_of_scope:
         scope_note = ""
 
@@ -83,6 +96,7 @@ def run_simple(api_key, evidence, model=None, llm_base=None):
     result = _sanitize(parse_json_block(msg.get("content")))
     result.update({
         "mode": "simple",
+        "capability": L1_EXPLAIN,
         "turns": 1,
         "elapsed_ms": int((time.time() - started) * 1000),
         "trace": [],
@@ -94,8 +108,10 @@ def run_simple(api_key, evidence, model=None, llm_base=None):
 def run_agent(api_key, java_base, token, record_id, question, model=None, history=None,
               llm_base=None):
     """工具循环：模型自己决定调用哪些工具、调几次"""
+    capability = classify(question)
+
     # 与检查数据无关的问题：不调模型、不查数据，直接说清楚能答什么
-    if is_off_topic(question):
+    if capability == OFF_TOPIC:
         return {
             "mode": "agent",
             "summary": OFF_TOPIC_REPLY,
@@ -109,6 +125,26 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
             "usage": _empty_usage(),
             "forced_finish": False,
             "no_tool_used": False,
+            "capability": OFF_TOPIC,
+        }
+
+    # 挂号、问诊这类要人去执行的诉求：系统没有代办能力，直接给入口
+    if capability == L3_SERVICE:
+        return {
+            "mode": "agent",
+            "summary": SERVICE_REPLY,
+            "highlights": [],
+            "warnings": [],
+            "suggestions": list(SERVICE_SUGGESTIONS),
+            "off_topic": False,
+            "out_of_scope": False,
+            "turns": 0,
+            "elapsed_ms": 0,
+            "trace": [],
+            "usage": _empty_usage(),
+            "forced_finish": False,
+            "no_tool_used": False,
+            "capability": L3_SERVICE,
         }
 
     box = ToolBox(java_base, token)
@@ -127,7 +163,9 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
     else:
         context = "当前没有指定记录（用户在全局助手提问，范围是全部记录）"
     messages.append({"role": "user",
-                     "content": "%s\n问题：%s" % (context, question or "我最近的检查有什么需要关注的？")})
+                     "content": "%s\n【能力上限】%s\n问题：%s" % (
+                         context, ceiling_hint(capability),
+                         question or "我最近的检查有什么需要关注的？")})
 
     # 首轮必须查数据；追问允许直接基于上文作答（上文本身来自已验证的工具结果）
     require_tools = not history
@@ -166,9 +204,10 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
                     "你还没有调用任何工具，手上没有数据。请立刻调用 get_record 等工具取数，不要凭记忆作答。"})
                 turns += 1
                 continue
-            result = _sanitize(parse_json_block(msg.get("content")))
+            result = _sanitize(parse_json_block(msg.get("content")), capability)
             result.update({
                 "mode": "agent",
+                "capability": capability,
                 "turns": turns + 1,
                 "elapsed_ms": int((time.time() - started) * 1000),
                 "trace": box.trace,
@@ -216,11 +255,12 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
     try:
         msg, used = chat(api_key, messages, model=model, base_url=llm_base, timeout=15)
         usage = _add_usage(usage, used)
-        result = _sanitize(parse_json_block(msg.get("content")))
+        result = _sanitize(parse_json_block(msg.get("content")), capability)
     except LlmError as e:
         result = {"summary": "生成失败", "highlights": [], "warnings": [str(e)]}
     result.update({
         "mode": "agent",
+        "capability": capability,
         "turns": turns,
         "elapsed_ms": int((time.time() - started) * 1000),
         "trace": box.trace,
