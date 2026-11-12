@@ -5,6 +5,7 @@
   agent  —— 只拿到 recordId 和问题，模型自己决定查什么、查几次
 """
 import json
+import re
 import time
 
 from llm import LlmError, chat, parse_json_block
@@ -36,8 +37,11 @@ def _sanitize(parsed, capability=None):
 
     summary = parsed.get("summary") or ""
     if any(w in summary for w in FORBIDDEN):
-        # 判病、治疗类的措辞整段换成范围说明，数据由 highlights 继续给
-        summary = "这部分属于医学判断，我这边只能提供数据。"
+        # 只丢掉含医疗建议的那一句，保留其余有据可依的内容；
+        # 整段替换会把「引用标准原文」也一起打死
+        kept = [s for s in re.split(r"(?<=[。！？；])", summary)
+                if s.strip() and not any(w in s for w in FORBIDDEN)]
+        summary = "".join(kept).strip() or "这部分属于医学判断，我这边只能提供数据。"
 
     highlights = []
     dropped = 0
@@ -175,6 +179,9 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
     forced = False
     departments_payload = None
     hospitals_payload = None
+    knowledge_payload = None
+    knowledge_rank = -1
+    knowledge_empty = False
     nudged = 0
     seen = set()
     usage = _empty_usage()
@@ -218,6 +225,7 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
                 "usage": usage,
                 "triage": departments_payload,
                 "hospitals": hospitals_payload,
+                "knowledge": knowledge_payload,
             })
             return result
 
@@ -233,6 +241,16 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
                 args = json.loads(fn.get("arguments") or "{}")
             except Exception:  # noqa: BLE001
                 args = {}
+
+            if name == "search_knowledge" and knowledge_empty:
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": call.get("id"),
+                    "content": json.dumps({"hits": [],
+                                           "note": "知识库已确认没有相关条目，不要重试，直接说明没有这条"},
+                                          ensure_ascii=False),
+                })
+                continue
 
             # 同样的调用已经做过 → 不再打接口，直接提醒模型换策略
             signature = name + ":" + json.dumps(args, sort_keys=True, ensure_ascii=False)
@@ -260,6 +278,21 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
                         departments_payload = parsed
                 except Exception:  # noqa: BLE001
                     pass
+            elif name == "search_knowledge":
+                # 以后一次检索为准：模型可能先查一次空、再换个词查；
+                # 若只保留「有命中」的那次，界面会出现与最终回答不一致的引用
+                try:
+                    parsed = json.loads(content)
+                    if isinstance(parsed, dict):
+                        # 带意图（fields 非空）的那次检索更可信：
+                        # 模型可能先按原问题查空、再换个泛词乱查，后者不该覆盖前者
+                        rank = 1 if ((parsed.get("query") or {}).get("fields")) else 0
+                        if rank >= knowledge_rank:
+                            knowledge_payload, knowledge_rank = parsed, rank
+                        if not (parsed.get("hits") or []):
+                            knowledge_empty = True
+                except Exception:  # noqa: BLE001
+                    pass
             elif name == "find_hospitals":
                 try:
                     parsed = json.loads(content)
@@ -283,6 +316,7 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
         "capability": capability,
         "triage": departments_payload,
         "hospitals": hospitals_payload,
+                "knowledge": knowledge_payload,
         "turns": turns,
         "elapsed_ms": int((time.time() - started) * 1000),
         "trace": box.trace,

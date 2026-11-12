@@ -9,6 +9,7 @@ import time
 import urllib.parse
 import urllib.request
 
+import knowledge
 from departments import suggest as suggest_departments
 
 
@@ -125,6 +126,23 @@ class ToolBox:
                         "department": {"type": "string", "description": "科室名，如内分泌科"},
                         "limit": {"type": "integer", "description": "最多几家，默认 5"},
                     },
+                },
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "search_knowledge",
+                "description": "检索指标知识条目（是什么、为什么区间不同、检测前准备、影响因素、单位）。"
+                               "只返回带出处的条目；没有命中就返回空，不要用常识补。"
+                               "回答时必须写出处（来源 + 定位），且不能把通用知识说成对用户个人的结论。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "检索词，通常是用户原问题"},
+                        "top_k": {"type": "integer", "description": "最多几条，默认 3"},
+                    },
+                    "required": ["query"],
                 },
             },
         },
@@ -246,6 +264,19 @@ class ToolBox:
         return [{"gender": r.get("gender"), "age_min": r.get("ageMin"), "age_max": r.get("ageMax"),
                  "ref_min": r.get("refMin"), "ref_max": r.get("refMax"), "source": r.get("source")}
                 for r in data]
+
+    def _search_knowledge(self, query=None, top_k=3):
+        """检索知识条目：索引在进程内，语料来自 Java 的 /api/knowledge"""
+        if not (query or "").strip():
+            raise ToolError("query 不能为空")
+
+        def loader():
+            entries = self._get("/api/knowledge") or []
+            indicators = self._get("/api/indicators") or []
+            return entries, indicators
+
+        idx = knowledge.get_index(loader)
+        return idx.search(query, getattr(idx, "indicators", []), top_k=max(1, int(top_k or 3)))
 
     def _find_hospitals(self, city="杭州", department=None, limit=5):
         """白名单查询：只返回库里有的医院，模型不能新增"""

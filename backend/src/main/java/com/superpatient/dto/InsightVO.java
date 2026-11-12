@@ -33,6 +33,8 @@ public class InsightVO {
     private Map<String, Object> triage;
     /** 白名单医院候选（仅本次调用了 find_hospitals）：{ hospitals: [...], note } */
     private Map<String, Object> hospitals;
+    /** 知识条目检索结果（仅本次调用了 search_knowledge）：{ hits: [...], note } */
+    private Map<String, Object> knowledge;
     /** 无关时可点的示例问题 */
     private List<String> suggestions = new ArrayList<>();
     /** agent 模式下了几轮 */

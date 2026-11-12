@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.superpatient.mapper.KnowledgeMapper">
+
+    <select id="findVerified" resultType="com.superpatient.dto.KnowledgeVO">
+        SELECT k.id            AS id,
+               k.indicator_id  AS indicatorId,
+               i.name          AS indicatorName,
+               i.aliases       AS aliases,
+               k.field         AS field,
+               k.text          AS text,
+               k.source_id     AS sourceId,
+               s.title         AS sourceTitle,
+               k.locator       AS locator
+        FROM indicator_knowledge k
+        JOIN knowledge_source s ON s.id = k.source_id
+        LEFT JOIN exam_indicator i ON i.id = k.indicator_id
+        WHERE k.verified_at IS NOT NULL AND s.status = 1
+        ORDER BY k.indicator_id IS NULL, k.id
+    </select>
+</mapper>

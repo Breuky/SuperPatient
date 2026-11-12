@@ -68,6 +68,16 @@
             <span v-if="h.basis" class="basis" :title="h.basis">依据</span>
           </div>
 
+          <div v-if="m.data.knowledge && (m.data.knowledge.hits || []).length" class="know">
+            <div class="know-head">知识补充（带出处）</div>
+            <div v-for="(k, i) in m.data.knowledge.hits" :key="i" class="know-item">
+              <div class="know-text">{{ k.text }}</div>
+              <div class="know-src">
+                {{ k.source_title }}<span v-if="k.locator"> · {{ k.locator }}</span>
+              </div>
+            </div>
+          </div>
+
           <div v-if="m.data.triage && (m.data.triage.departments || []).length" class="triage">
             <div class="triage-head">建议就诊科室</div>
             <div v-for="(d, k) in m.data.triage.departments" :key="k" class="triage-item">
@@ -298,6 +308,12 @@ defineExpose({ resetChat })
 .scope-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .data-head { margin: 12px 0 2px; font-size: var(--font-xs); color: var(--text-hint); }
 
+.know { margin-top: 10px; padding: 10px 12px; background: var(--bg-primary); border-radius: var(--radius-sm); }
+.know-head { font-size: var(--font-xs); color: var(--text-hint); margin-bottom: 6px; }
+.know-item { padding: 4px 0; border-top: 0.5px dashed var(--border-light); }
+.know-item:first-of-type { border-top: none; }
+.know-text { font-size: var(--font-xs); color: var(--text-secondary); line-height: 1.5; }
+.know-src { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
 .triage { margin-top: 10px; padding: 10px 12px; background: var(--bg-primary); border-radius: var(--radius-sm); }
 .triage-head { font-size: var(--font-xs); color: var(--text-hint); margin-bottom: 6px; }
 .triage-item { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; }
