@@ -10,6 +10,8 @@ public class HospitalVO {
     private String city;
     private String district;
     private String level;
+    /** 综合 / 中医 / 专科 */
+    private String hospitalType;
     private String address;
     private String bookingUrl;
     private String department;

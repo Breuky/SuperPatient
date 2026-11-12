@@ -8,6 +8,7 @@
                h.city          AS city,
                h.district      AS district,
                h.level         AS level,
+               h.hospital_type AS hospitalType,
                h.address       AS address,
                h.booking_url   AS bookingUrl,
                hd.department   AS department,
