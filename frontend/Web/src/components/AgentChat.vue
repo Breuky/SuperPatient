@@ -68,6 +68,21 @@
             <span v-if="h.basis" class="basis" :title="h.basis">依据</span>
           </div>
 
+          <div v-if="m.data.triage && (m.data.triage.departments || []).length" class="triage">
+            <div class="triage-head">建议就诊科室</div>
+            <div v-for="(d, k) in m.data.triage.departments" :key="k" class="triage-item">
+              <span class="dept">{{ d.name }}</span>
+              <span class="why">{{ (d.reasons || []).join('；') }}</span>
+            </div>
+            <div v-if="(m.data.triage.based_on || []).length" class="triage-basis">
+              依据：
+              <template v-for="(b, k) in m.data.triage.based_on" :key="k">
+                {{ b.name }}<span v-if="b.times > 1">（{{ b.times }} 次）</span><span v-if="k < m.data.triage.based_on.length - 1">、</span>
+              </template>
+            </div>
+            <p class="triage-note">{{ m.data.triage.note }}</p>
+          </div>
+
           <div v-if="m.data.trace && m.data.trace.length" class="trace">
             <span class="trace-label">{{ m.data.turns }} 轮 · 工具 {{ m.data.trace.length }} 次</span>
             <el-tag v-for="(t, j) in m.data.trace" :key="j" size="small" class="tool">
@@ -263,6 +278,13 @@ defineExpose({ resetChat })
 .scope-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .data-head { margin: 12px 0 2px; font-size: var(--font-xs); color: var(--text-hint); }
 
+.triage { margin-top: 10px; padding: 10px 12px; background: var(--bg-primary); border-radius: var(--radius-sm); }
+.triage-head { font-size: var(--font-xs); color: var(--text-hint); margin-bottom: 6px; }
+.triage-item { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; }
+.triage-item .dept { font-weight: 600; color: var(--text-primary); font-size: var(--font-sm); }
+.triage-item .why { font-size: var(--font-xs); color: var(--text-secondary); }
+.triage-basis { font-size: var(--font-xs); color: var(--text-hint); margin-top: 6px; }
+.triage-note { font-size: var(--font-xs); color: var(--text-hint); margin: 4px 0 0; }
 .trace { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
 .trace-label { font-size: var(--font-xs); color: var(--text-hint); margin-right: 4px; }
 .tool { font-family: ui-monospace, monospace; }

@@ -173,6 +173,7 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
     started = time.time()
     turns = 0
     forced = False
+    departments_payload = None
     nudged = 0
     seen = set()
     usage = _empty_usage()
@@ -214,6 +215,7 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
                 "forced_finish": forced,
                 "no_tool_used": require_tools and not box.trace,
                 "usage": usage,
+                "triage": departments_payload,
             })
             return result
 
@@ -242,11 +244,20 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
                 continue
             seen.add(signature)
 
+            content = box.call(name, args)
             messages.append({
                 "role": "tool",
                 "tool_call_id": call.get("id"),
-                "content": box.call(name, args),
+                "content": content,
             })
+            # 导诊结果单独带出去，前端渲染成卡片（模型只在正文里转述）
+            if name == "suggest_departments":
+                try:
+                    parsed = json.loads(content)
+                    if parsed.get("departments"):
+                        departments_payload = parsed
+                except Exception:  # noqa: BLE001
+                    pass
         turns += 1
 
     # 轮数或时间用尽：强制收尾，不让请求无限挂着

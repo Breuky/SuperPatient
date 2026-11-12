@@ -26,6 +26,11 @@ public class InsightVO {
      * 模型只能在此上限内作答，前端据此切换展示形态（免责、拒答、服务入口）。
      */
     private String capability;
+    /**
+     * 导诊结果（仅 L3 且本次调用了 suggest_departments）：
+     * { based_on: [...], departments: [{name, score, reasons}], unmapped: [...], note }
+     */
+    private Map<String, Object> triage;
     /** 无关时可点的示例问题 */
     private List<String> suggestions = new ArrayList<>();
     /** agent 模式下了几轮 */

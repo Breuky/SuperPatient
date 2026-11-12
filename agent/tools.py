@@ -232,7 +232,16 @@ class ToolBox:
     def _suggest_departments(self, limit=10):
         """按历史异常指标推科室：指标来自接口，映射来自本地规则表，全程不调模型"""
         data = self._get("/api/statistics/overview") or {}
-        top = (data.get("topAbnormal") or [])[: max(1, int(limit or 10))]
+        raw = data.get("topAbnormal") or []
+        # 同一指标可能存在公共/私有两条（id 不同、名字相同），按名字去重，次数取最大
+        seen_names, deduped = set(), []
+        for item in raw:
+            name = (item.get("name") or "").strip()
+            if not name or name in seen_names:
+                continue
+            seen_names.add(name)
+            deduped.append(item)
+        top = deduped[: max(1, int(limit or 10))]
         if not top:
             return {"departments": [], "based_on": [],
                     "note": "没有异常记录，无法按指标推荐科室"}

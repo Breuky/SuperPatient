@@ -339,6 +339,8 @@ public class InsightService {
         Object turns = response.get("turns");
         if (turns instanceof Number) vo.setTurns(((Number) turns).intValue());
         vo.setUsage((Map<String, Object>) response.get("usage"));
+        Object triage = response.get("triage");
+        if (triage instanceof Map) vo.setTriage((Map<String, Object>) triage);
 
         for (Object item : (List<Object>) response.getOrDefault("highlights", List.of())) {
             Map<String, Object> m = (Map<String, Object>) item;
