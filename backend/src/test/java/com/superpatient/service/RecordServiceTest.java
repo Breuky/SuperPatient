@@ -135,6 +135,22 @@ class RecordServiceTest {
     }
 
     @Test
+    void snapshotsRangeWhenRuleComesFromStandard() {
+        when(indicatorMapper.findById(1)).thenReturn(indicator(1, null, null));
+        when(referenceRangeService.resolve(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()))
+                .thenReturn(new ReferenceRangeService.Resolved(
+                        new BigDecimal("3.5"), new BigDecimal("9.5"), "3.5-9.5", "WS/T 405-2012"));
+
+        recordService.create(request(item(1, "9.8")));
+
+        ExamValue v = capturedValues().get(0);
+        assertEquals("WS/T 405-2012", v.getRefSource(), "国标来源也要落快照，不能只认字面量 rule");
+        assertEquals(0, new BigDecimal("3.5").compareTo(v.getRefMin()));
+        assertEquals(1, v.getIsAbnormal(), "9.8 > 9.5 应判偏高");
+    }
+
+    @Test
     void rejectsBlankExamDate() {
         RecordCreateRequest request = request();
         request.setExamDate("");

@@ -224,9 +224,9 @@ public class RecordService {
             v.setRawUnit(item.getRawUnit());
 
             ReferenceRangeService.Resolved range = effectiveRange(item, ind, ctx);
-            // 只有报告自带或规则推算出来的区间才落快照；
-            // 指标默认值不冻结，方便以后调整默认区间
-            if ("report".equals(range.source()) || "rule".equals(range.source())) {
+            // 报告自带或规则推算出来的区间都落快照（规则来源可能是 "rule"，
+            // 也可能带具体出处如 "WS/T 405-2012"）；指标默认值不冻结
+            if (range.source() != null && !"default".equals(range.source())) {
                 v.setRefMin(range.min());
                 v.setRefMax(range.max());
                 v.setRefSource(range.source());

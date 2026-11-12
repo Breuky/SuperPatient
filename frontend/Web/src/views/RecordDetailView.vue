@@ -140,14 +140,17 @@ function hasRawInfo(row) {
 }
 
 function sourceText(source) {
+  if (!source || source === 'default') return '默认值'
   if (source === 'report') return '报告标注'
+  if (source.indexOf('WS/T') === 0) return '国标 ' + source
   if (source === 'rule') return '按性别年龄'
-  return '默认值'
+  return '按规则'
 }
 
 function sourceTagType(source) {
   if (source === 'report') return 'success'
-  if (source === 'rule') return 'warning'
+  if (source && source.indexOf('WS/T') === 0) return 'success'
+  if (source && source !== 'default') return 'warning'
   return 'info'
 }
 
