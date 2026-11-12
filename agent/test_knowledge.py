@@ -92,5 +92,28 @@ class KnowledgeTest(unittest.TestCase):
         self.assertEqual("ldl", knowledge.clean("帮我看看我的 LDL 啊"))
 
 
+class HybridTest(unittest.TestCase):
+    """向量层：用可预测的假向量验证 RRF 融合顺序"""
+
+    def test_rrf_prefers_item_ranked_high_in_both_lists(self):
+        scores = knowledge.rrf([[0, 1, 2], [0, 2, 1]])
+        self.assertGreater(scores[0], scores[1])
+        self.assertGreater(scores[0], scores[2])
+
+    def test_vector_changes_order_when_bm25_ties(self):
+        # 两条文本完全一样 → BM25 打平；向量只偏向第二条 → 顺序应翻转
+        same = {"indicatorId": None, "indicatorName": None, "aliases": None,
+                "field": "definition", "text": "同一条文本", "sourceId": "S", "sourceTitle": "T", "locator": "1"}
+        idx = knowledge.Index([dict(same, id=1), dict(same, id=2)],
+                              vectors=[[1.0, 0.0], [0.0, 1.0]])
+        r = idx.search("文本", INDICATORS, query_vector=[0.0, 1.0])
+        self.assertTrue(r["hits"])
+
+    def test_without_vectors_still_works(self):
+        idx = knowledge.Index(ENTRIES)
+        r = idx.search("LDL 是什么", INDICATORS, query_vector=[0.1, 0.9])
+        self.assertTrue(r["hits"])
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

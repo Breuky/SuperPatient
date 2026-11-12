@@ -9,6 +9,7 @@ import time
 import urllib.parse
 import urllib.request
 
+import embedding
 import knowledge
 from departments import suggest as suggest_departments
 
@@ -275,8 +276,13 @@ class ToolBox:
             indicators = self._get("/api/indicators") or []
             return entries, indicators
 
-        idx = knowledge.get_index(loader)
-        return idx.search(query, getattr(idx, "indicators", []), top_k=max(1, int(top_k or 3)))
+        idx = knowledge.get_index(loader, embedder=embedding.embed)
+        query_vector = None
+        if getattr(idx, "vectors", None):
+            vecs = embedding.embed([query])
+            query_vector = vecs[0] if vecs else None
+        return idx.search(query, getattr(idx, "indicators", []),
+                          top_k=max(1, int(top_k or 3)), query_vector=query_vector)
 
     def _find_hospitals(self, city="杭州", department=None, limit=5):
         """白名单查询：只返回库里有的医院，模型不能新增"""

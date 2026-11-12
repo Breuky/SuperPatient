@@ -90,8 +90,21 @@ def normalize(query: str, indicators):
     return cleaned, anchored, fields
 
 
+def cosine(a, b):
+    return sum(x * y for x, y in zip(a, b))          # 已归一化，点积即余弦
+
+
+def rrf(rank_lists, k=60):
+    """倒数排名融合：多路召回各给一个名次，按 1/(k+rank) 累加。"""
+    scores = {}
+    for ranks in rank_lists:
+        for pos, idx in enumerate(ranks):
+            scores[idx] = scores.get(idx, 0.0) + 1.0 / (k + pos + 1)
+    return scores
+
+
 class Index:
-    def __init__(self, entries):
+    def __init__(self, entries, vectors=None):
         self.entries = [e for e in entries if (e.get("text") or "").strip()]
         self.docs = []
         self.df = {}
@@ -108,12 +121,14 @@ class Index:
 
         self.n = len(self.docs)
         self.avg_len = (sum(d["len"] for d in self.docs) / self.n) if self.n else 1.0
+        # 向量层是可选的：没装 embedding 时保持 None，检索退回纯 BM25
+        self.vectors = vectors if vectors and len(vectors) == self.n else None
 
     def _idf(self, token):
         df = self.df.get(token, 0)
         return math.log(1 + (self.n - df + 0.5) / (df + 0.5)) if df else 0.0
 
-    def search(self, query, indicators=None, top_k=3, min_score=MIN_SCORE):
+    def search(self, query, indicators=None, top_k=3, min_score=MIN_SCORE, query_vector=None):
         if not self.n:
             return {"hits": [], "note": "知识库为空", "query": {"cleaned": clean(query)}}
 
@@ -124,7 +139,7 @@ class Index:
 
         idf_sum = sum(self._idf(t) for t in set(tokens)) or 1.0
         scored = []
-        for doc in self.docs:
+        for pos, doc in enumerate(self.docs):
             entry = doc["entry"]
             raw = 0.0
             for t in set(tokens):
@@ -133,7 +148,6 @@ class Index:
                     continue
                 denom = tf + K1 * (1 - B + B * doc["len"] / self.avg_len)
                 raw += self._idf(t) * (tf * (K1 + 1)) / denom
-
             if not raw:
                 continue
 
@@ -150,28 +164,44 @@ class Index:
 
             score = boosted / idf_sum
             if score >= min_score:
-                scored.append((score, entry))
+                scored.append((score, pos))
+
+        if not scored:
+            note = ("知识库里没有「%s」类条目" % "/".join(fields)) if fields \
+                else "知识库里没有与这个问题匹配的条目"
+            return {"hits": [], "note": note,
+                    "query": {"cleaned": cleaned, "anchored": anchored, "fields": fields}}
+
+        scored.sort(key=lambda x: -x[0])
+
+        # 混合检索：BM25 名次 + 向量名次，RRF 融合
+        if self.vectors and query_vector:
+            bm25_order = [pos for _, pos in scored]
+            sims = sorted(((cosine(query_vector, self.vectors[i]), i)
+                           for i in range(len(self.docs))), reverse=True)
+            vec_order = [i for s, i in sims if s > 0]
+            fused = rrf([bm25_order, vec_order])
+            scored = sorted(((fused[pos], pos) for _, pos in scored), key=lambda x: -x[0])
 
         # 意图硬过滤：问「是什么」就只看 definition 条目。
         # 该类型一条都没有时返回空，而不是拿相近条目凑——凑出来的引用比没有更糟。
         if fields:
-            same_field = [(s, e) for s, e in scored if e.get("field") in fields]
+            same_field = [(s, pos) for s, pos in scored if self.docs[pos]["entry"].get("field") in fields]
             if same_field:
                 scored = same_field
             else:
                 return {"hits": [], "note": "知识库里没有「%s」类条目" % "/".join(fields),
                         "query": {"cleaned": cleaned, "anchored": anchored, "fields": fields}}
 
-        scored.sort(key=lambda x: -x[0])
         hits = [{
             "score": round(s, 3),
-            "text": e.get("text"),
-            "field": e.get("field"),
-            "indicator": e.get("indicatorName"),
-            "source_id": e.get("sourceId"),
-            "source_title": e.get("sourceTitle"),
-            "locator": e.get("locator"),
-        } for s, e in scored[:top_k]]
+            "text": self.docs[pos]["entry"].get("text"),
+            "field": self.docs[pos]["entry"].get("field"),
+            "indicator": self.docs[pos]["entry"].get("indicatorName"),
+            "source_id": self.docs[pos]["entry"].get("sourceId"),
+            "source_title": self.docs[pos]["entry"].get("sourceTitle"),
+            "locator": self.docs[pos]["entry"].get("locator"),
+        } for s, pos in scored[:top_k]]
 
         return {
             "hits": hits,
@@ -183,17 +213,22 @@ class Index:
 _cache = {"at": 0.0, "index": None}
 
 
-def build_index(entries):
-    _cache["index"] = Index(entries)
+def build_index(entries, vectors=None):
+    _cache["index"] = Index(entries, vectors)
     _cache["at"] = time.time()
     return _cache["index"]
 
 
-def get_index(loader):
+def get_index(loader, embedder=None):
     """loader 返回 (entries, indicators)；带 TTL 缓存，避免每次问答都拉全量"""
     if _cache["index"] is not None and time.time() - _cache["at"] < CACHE_TTL_SECONDS:
         return _cache["index"]
     entries, indicators = loader()
-    idx = build_index(entries)
+    vectors = None
+    if embedder is not None:
+        texts = [" ".join(filter(None, [e.get("indicatorName"), e.get("aliases"), e.get("text")]))
+                 for e in entries]
+        vectors = embedder(texts)
+    idx = build_index(entries, vectors)
     idx.indicators = indicators
     return idx
