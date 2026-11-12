@@ -50,6 +50,24 @@ class SuggestDepartmentsTest(unittest.TestCase):
         self.assertEqual(["某种没收录的指标"], payload["unmapped"])
         self.assertEqual("全科医学科", payload["departments"][0]["name"])
 
+    def test_find_hospitals_passes_department(self):
+        rows = [{"name": "浙江大学医学院附属第一医院", "level": "三甲",
+                 "department": "肾内科", "specialtyLevel": None,
+                 "bookingUrl": None, "verified": False}]
+        with patch.object(tools.ToolBox, "_get", return_value=rows) as m:
+            payload = json.loads(self.box.call("find_hospitals",
+                                               {"city": "杭州", "department": "肾内科"}))
+
+        self.assertEqual(1, len(payload["hospitals"]))
+        self.assertFalse(payload["hospitals"][0]["verified"])
+        self.assertIn("department=", m.call_args[0][0])
+
+    def test_find_hospitals_empty_has_note(self):
+        with patch.object(tools.ToolBox, "_get", return_value=[]):
+            payload = json.loads(self.box.call("find_hospitals", {"department": "眼科"}))
+        self.assertEqual([], payload["hospitals"])
+        self.assertIn("暂无", payload["note"])
+
     def test_trace_is_recorded(self):
         with patch.object(tools.ToolBox, "_get", return_value=_overview()):
             self.box.call("suggest_departments", {"limit": 5})

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.superpatient.mapper.HospitalMapper">
+
+    <select id="findByCityAndDepartment" resultType="com.superpatient.dto.HospitalVO">
+        SELECT h.id            AS hospitalId,
+               h.name          AS name,
+               h.city          AS city,
+               h.district      AS district,
+               h.level         AS level,
+               h.address       AS address,
+               h.booking_url   AS bookingUrl,
+               hd.department   AS department,
+               hd.specialty_level AS specialtyLevel,
+               COALESCE(hd.source_url, h.source_url) AS sourceUrl,
+               (hd.source_url IS NOT NULL AND hd.verified_at IS NOT NULL) AS verified
+        FROM hospital h
+        JOIN hospital_department hd ON hd.hospital_id = h.id
+        WHERE h.status = 1
+        <if test="city != null and city != ''">
+            AND h.city = #{city}
+        </if>
+        <if test="department != null and department != ''">
+            AND hd.department = #{department}
+        </if>
+        ORDER BY (hd.specialty_level IS NULL), hd.specialty_level DESC, h.id
+        LIMIT #{limit}
+    </select>
+</mapper>

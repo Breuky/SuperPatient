@@ -110,6 +110,23 @@ class ToolBox:
                 },
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "find_hospitals",
+                "description": "按城市 + 科室查白名单内的医院（只读、结果来自本地白名单）。"
+                               "先调 suggest_departments 拿到科室，再用它查医院；"
+                               "不要自己编医院名，也不要承诺号源。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "city": {"type": "string", "description": "城市，默认杭州"},
+                        "department": {"type": "string", "description": "科室名，如内分泌科"},
+                        "limit": {"type": "integer", "description": "最多几家，默认 5"},
+                    },
+                },
+            },
+        },
     ]
 
     # ---------- 执行 ----------
@@ -228,6 +245,29 @@ class ToolBox:
         return [{"gender": r.get("gender"), "age_min": r.get("ageMin"), "age_max": r.get("ageMax"),
                  "ref_min": r.get("refMin"), "ref_max": r.get("refMax"), "source": r.get("source")}
                 for r in data]
+
+    def _find_hospitals(self, city="杭州", department=None, limit=5):
+        """白名单查询：只返回库里有的医院，模型不能新增"""
+        query = ["limit=%d" % max(1, int(limit or 5))]
+        if city:
+            query.append("city=" + urllib.parse.quote(city))
+        if department:
+            query.append("department=" + urllib.parse.quote(department))
+        data = self._get("/api/hospitals?" + "&".join(query)) or []
+        if not data:
+            return {"hospitals": [],
+                    "note": "该城市/科室暂无已录入的白名单医院"}
+        return {
+            "hospitals": [{
+                "name": h.get("name"), "level": h.get("level"),
+                "department": h.get("department"),
+                "specialty_level": h.get("specialtyLevel"),
+                "address": h.get("address"),
+                "booking_url": h.get("bookingUrl"),
+                "verified": bool(h.get("verified")),
+            } for h in data],
+            "note": "仅来自白名单；verified=false 表示资质尚未人工核对，不要描述为「最好」",
+        }
 
     def _suggest_departments(self, limit=10):
         """按历史异常指标推科室：指标来自接口，映射来自本地规则表，全程不调模型"""
