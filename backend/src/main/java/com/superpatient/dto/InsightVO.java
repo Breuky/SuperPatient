@@ -31,6 +31,8 @@ public class InsightVO {
      * { based_on: [...], departments: [{name, score, reasons}], unmapped: [...], note }
      */
     private Map<String, Object> triage;
+    /** 白名单医院候选（仅本次调用了 find_hospitals）：{ hospitals: [...], note } */
+    private Map<String, Object> hospitals;
     /** 无关时可点的示例问题 */
     private List<String> suggestions = new ArrayList<>();
     /** agent 模式下了几轮 */

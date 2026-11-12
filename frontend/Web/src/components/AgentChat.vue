@@ -83,6 +83,26 @@
             <p class="triage-note">{{ m.data.triage.note }}</p>
           </div>
 
+          <div v-if="m.data.hospitals && (m.data.hospitals.hospitals || []).length" class="triage">
+            <div class="triage-head">白名单医院</div>
+            <div v-for="(h, k) in m.data.hospitals.hospitals" :key="k" class="hospital-item">
+              <div class="hrow">
+                <span class="hname">{{ h.name }}</span>
+                <el-tag size="small" effect="plain">{{ h.level }}</el-tag>
+                <el-tag v-if="h.specialty_level" size="small" type="success" effect="plain">
+                  {{ h.specialty_level }}
+                </el-tag>
+                <el-tag v-else size="small" type="info" effect="plain">科室资质未核对</el-tag>
+              </div>
+              <div class="hmeta">
+                {{ h.department }}
+                <span v-if="h.address"> · {{ h.address }}</span>
+                <a v-if="h.booking_url" :href="h.booking_url" target="_blank" rel="noopener">官方预约入口</a>
+              </div>
+            </div>
+            <p class="triage-note">{{ m.data.hospitals.note }}</p>
+          </div>
+
           <div v-if="m.data.trace && m.data.trace.length" class="trace">
             <span class="trace-label">{{ m.data.turns }} 轮 · 工具 {{ m.data.trace.length }} 次</span>
             <el-tag v-for="(t, j) in m.data.trace" :key="j" size="small" class="tool">
@@ -284,6 +304,12 @@ defineExpose({ resetChat })
 .triage-item .dept { font-weight: 600; color: var(--text-primary); font-size: var(--font-sm); }
 .triage-item .why { font-size: var(--font-xs); color: var(--text-secondary); }
 .triage-basis { font-size: var(--font-xs); color: var(--text-hint); margin-top: 6px; }
+.hospital-item { padding: 6px 0; border-top: 0.5px dashed var(--border-light); }
+.hospital-item:first-of-type { border-top: none; }
+.hrow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.hname { font-weight: 600; font-size: var(--font-sm); color: var(--text-primary); }
+.hmeta { font-size: var(--font-xs); color: var(--text-hint); margin-top: 2px; }
+.hmeta a { color: var(--green-dark, #0a8f4c); text-decoration: underline; margin-left: 6px; }
 .triage-note { font-size: var(--font-xs); color: var(--text-hint); margin: 4px 0 0; }
 .trace { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
 .trace-label { font-size: var(--font-xs); color: var(--text-hint); margin-right: 4px; }

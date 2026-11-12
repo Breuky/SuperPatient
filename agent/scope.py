@@ -34,7 +34,9 @@ CEILINGS = {
     L0_DATA: "L0 数据查询：只报数值、次数、时间、归属哪次检查；不解释含义。",
     L1_EXPLAIN: "L1 数据解释：可说明数值与参考区间的关系、与过去几次相比的变化；不下医学结论。",
     L2_MEDICAL: "L2 医学判断：只给与问题相关的数据事实，不给结论；必须置 out_of_scope=true。",
-    L3_SERVICE: "L3 服务代办：系统不具备代办能力，只说明能看什么数据。",
+    L3_SERVICE: ("L3 导诊：先调 suggest_departments 拿到候选科室，再调 find_hospitals 查白名单医院"
+                 "（用户没说城市时按杭州查，并在回答里说明这是默认假设）；"
+                 "只给候选与依据，不能代办挂号，不能承诺号源。"),
 }
 
 # 出现这些词，认为和检查数据有关，交给模型
@@ -60,10 +62,19 @@ OFF_TOPIC_HINTS = (
 )
 
 # L3：需要人/机构去执行的动作，系统只给入口
-SERVICE_WORDS = (
-    "挂号", "挂个", "约号", "预约", "问诊", "找医生", "看医生", "买药", "买点药",
-    "缴费", "医保", "加号", "陪诊", "帮我看病", "代问",
+# 咨询类：问「该去哪个科」，不代办，可以给白名单候选
+ADVISE_WORDS = (
+    "挂什么科", "看什么科", "哪个科", "哪一科", "挂哪个", "看哪个",
+    "去哪看", "去哪家", "该看哪", "什么科室", "哪家医院", "推荐医院",
 )
+
+# 代办类：要系统替他去挂号/问诊，系统没有这个能力，只能给入口
+TRANSACTION_WORDS = (
+    "问诊", "帮我挂", "替我挂", "帮我约", "帮我预约", "帮我问", "代问", "陪诊",
+    "加号", "缴费", "医保", "买药", "买点药", "帮我看病",
+)
+
+SERVICE_WORDS = TRANSACTION_WORDS + ADVISE_WORDS
 
 # L2 强信号：出现即封顶到医学判断，不受趋势词影响
 MEDICAL_STRONG = (
@@ -164,6 +175,11 @@ def ceiling_hint(capability):
 
 def label(capability):
     return LABELS.get(capability, "")
+
+
+def is_transaction(question):
+    """要系统替他执行（挂号、问诊、缴费）→ 只给入口；只是咨询该去哪个科 → 可以推荐。"""
+    return _hit((question or "").strip(), TRANSACTION_WORDS)
 
 
 def is_off_topic(question):

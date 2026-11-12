@@ -115,6 +115,7 @@ class ToolBox:
             "function": {
                 "name": "find_hospitals",
                 "description": "按城市 + 科室查白名单内的医院（只读、结果来自本地白名单）。"
+                               "用户没说城市时按杭州查，并在回答里说明这是默认假设。"
                                "先调 suggest_departments 拿到科室，再用它查医院；"
                                "不要自己编医院名，也不要承诺号源。",
                 "parameters": {
@@ -260,6 +261,7 @@ class ToolBox:
         return {
             "hospitals": [{
                 "name": h.get("name"), "level": h.get("level"),
+                "hospital_type": h.get("hospitalType"),
                 "department": h.get("department"),
                 "specialty_level": h.get("specialtyLevel"),
                 "address": h.get("address"),

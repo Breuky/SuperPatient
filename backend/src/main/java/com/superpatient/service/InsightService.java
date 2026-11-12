@@ -341,6 +341,8 @@ public class InsightService {
         vo.setUsage((Map<String, Object>) response.get("usage"));
         Object triage = response.get("triage");
         if (triage instanceof Map) vo.setTriage((Map<String, Object>) triage);
+        Object hospitals = response.get("hospitals");
+        if (hospitals instanceof Map) vo.setHospitals((Map<String, Object>) hospitals);
 
         for (Object item : (List<Object>) response.getOrDefault("highlights", List.of())) {
             Map<String, Object> m = (Map<String, Object>) item;

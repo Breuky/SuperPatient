@@ -11,7 +11,7 @@ from llm import LlmError, chat, parse_json_block
 from prompts import FORBIDDEN, SYSTEM_AGENT, SYSTEM_SIMPLE
 from scope import (L1_EXPLAIN, L2_MEDICAL, L3_SERVICE, OFF_TOPIC, OFF_TOPIC_REPLY,
                    OFF_TOPIC_SUGGESTIONS, SERVICE_REPLY, SERVICE_SUGGESTIONS,
-                   ceiling_hint, classify)
+                   ceiling_hint, classify, is_transaction)
 from tools import ToolBox
 
 MAX_TURNS = 6
@@ -128,8 +128,8 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
             "capability": OFF_TOPIC,
         }
 
-    # 挂号、问诊这类要人去执行的诉求：系统没有代办能力，直接给入口
-    if capability == L3_SERVICE:
+    # 只有「替我挂号/问诊」这类代办诉求才短路；「该挂什么科」要走工具给白名单候选
+    if capability == L3_SERVICE and is_transaction(question):
         return {
             "mode": "agent",
             "summary": SERVICE_REPLY,
@@ -174,6 +174,7 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
     turns = 0
     forced = False
     departments_payload = None
+    hospitals_payload = None
     nudged = 0
     seen = set()
     usage = _empty_usage()
@@ -216,6 +217,7 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
                 "no_tool_used": require_tools and not box.trace,
                 "usage": usage,
                 "triage": departments_payload,
+                "hospitals": hospitals_payload,
             })
             return result
 
@@ -258,6 +260,13 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
                         departments_payload = parsed
                 except Exception:  # noqa: BLE001
                     pass
+            elif name == "find_hospitals":
+                try:
+                    parsed = json.loads(content)
+                    if parsed.get("hospitals"):
+                        hospitals_payload = parsed
+                except Exception:  # noqa: BLE001
+                    pass
         turns += 1
 
     # 轮数或时间用尽：强制收尾，不让请求无限挂着
@@ -272,6 +281,8 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
     result.update({
         "mode": "agent",
         "capability": capability,
+        "triage": departments_payload,
+        "hospitals": hospitals_payload,
         "turns": turns,
         "elapsed_ms": int((time.time() - started) * 1000),
         "trace": box.trace,
