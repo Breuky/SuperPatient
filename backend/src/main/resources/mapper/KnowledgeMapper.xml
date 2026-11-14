@@ -11,6 +11,7 @@
                k.text          AS text,
                k.source_id     AS sourceId,
                s.title         AS sourceTitle,
+               s.origin_level  AS originLevel,
                k.locator       AS locator
         FROM indicator_knowledge k
         JOIN knowledge_source s ON s.id = k.source_id

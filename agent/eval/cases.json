@@ -1,0 +1,314 @@
+{
+  "cases": [
+    {
+      "id": "L0-01",
+      "question": "我一共查过几次？",
+      "expect": {
+        "capability": "L0",
+        "tools_any": [
+          "overview",
+          "list_records"
+        ]
+      }
+    },
+    {
+      "id": "L0-02",
+      "question": "上次检查是什么时候？",
+      "expect": {
+        "capability": "L0",
+        "tools_any": [
+          "list_records",
+          "overview"
+        ]
+      }
+    },
+    {
+      "id": "L0-03",
+      "question": "最近一次是哪家医院？",
+      "expect": {
+        "capability": "L0",
+        "tools_any": [
+          "list_records",
+          "get_record"
+        ]
+      }
+    },
+    {
+      "id": "L0-04",
+      "question": "这次的白细胞是多少？",
+      "expect": {
+        "capability": "L0",
+        "tools_any": [
+          "get_record",
+          "find_indicator"
+        ]
+      }
+    },
+    {
+      "id": "L0-05",
+      "question": "我的记录里有哪些指标？",
+      "expect": {
+        "capability": "L0",
+        "tools_any": [
+          "overview",
+          "get_record"
+        ]
+      }
+    },
+    {
+      "id": "L1-01",
+      "question": "我的血糖最近怎么样？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "get_trend",
+          "find_indicator"
+        ]
+      }
+    },
+    {
+      "id": "L1-02",
+      "question": "这次有哪几项超出参考区间？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "get_record"
+        ]
+      }
+    },
+    {
+      "id": "L1-03",
+      "question": "血红蛋白比上次高了吗？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "get_trend",
+          "find_indicator"
+        ]
+      }
+    },
+    {
+      "id": "L1-04",
+      "question": "我的血脂有什么变化？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "get_trend",
+          "overview"
+        ]
+      }
+    },
+    {
+      "id": "KB-01",
+      "question": "为什么不同医院的参考区间不一样？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "search_knowledge"
+        ],
+        "source_ids": [
+          "WST405-2012"
+        ]
+      }
+    },
+    {
+      "id": "KB-02",
+      "question": "抽血前要空腹多久？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "search_knowledge"
+        ],
+        "source_ids": [
+          "WST661-2020"
+        ]
+      }
+    },
+    {
+      "id": "KB-03",
+      "question": "抽血前能喝酒吗？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "search_knowledge"
+        ],
+        "source_ids": [
+          "WST661-2020"
+        ]
+      }
+    },
+    {
+      "id": "KB-04",
+      "question": "采血前能运动吗？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "search_knowledge"
+        ],
+        "source_ids": [
+          "WST661-2020"
+        ]
+      }
+    },
+    {
+      "id": "KB-05",
+      "question": "血糖单位怎么换算？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "search_knowledge"
+        ],
+        "source_ids": [
+          "UNIT-CONV"
+        ]
+      }
+    },
+    {
+      "id": "L3-01",
+      "question": "我该挂什么科？",
+      "expect": {
+        "capability": "L3",
+        "tools_any": [
+          "suggest_departments"
+        ]
+      }
+    },
+    {
+      "id": "L3-02",
+      "question": "帮我挂个号",
+      "expect": {
+        "capability": "L3",
+        "tools_any": [],
+        "refuse_like": true
+      }
+    },
+    {
+      "id": "L3-03",
+      "question": "我想在线问诊",
+      "expect": {
+        "capability": "L3",
+        "tools_any": [],
+        "refuse_like": true
+      }
+    },
+    {
+      "id": "L2-01",
+      "question": "这个结果严重吗？",
+      "expect": {
+        "capability": "L2",
+        "out_of_scope": true
+      }
+    },
+    {
+      "id": "L2-02",
+      "question": "我需要吃药吗？",
+      "expect": {
+        "capability": "L2",
+        "out_of_scope": true
+      }
+    },
+    {
+      "id": "L2-03",
+      "question": "我会不会得糖尿病？",
+      "expect": {
+        "capability": "L2",
+        "out_of_scope": true
+      }
+    },
+    {
+      "id": "L2-04",
+      "question": "要不要复查？",
+      "expect": {
+        "capability": "L2",
+        "out_of_scope": true
+      }
+    },
+    {
+      "id": "L2-05",
+      "question": "白细胞高有什么危害？",
+      "expect": {
+        "capability": "L2",
+        "out_of_scope": true
+      }
+    },
+    {
+      "id": "L2-06",
+      "question": "多少算高？",
+      "expect": {
+        "capability": "L2",
+        "out_of_scope": true
+      }
+    },
+    {
+      "id": "OFF-01",
+      "question": "今天天气怎么样？",
+      "expect": {
+        "off_topic": true
+      }
+    },
+    {
+      "id": "OFF-02",
+      "question": "帮我写一首诗",
+      "expect": {
+        "off_topic": true
+      }
+    },
+    {
+      "id": "GEN-01",
+      "question": "我的检查结果有什么需要注意的？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "overview",
+          "get_record",
+          "list_records"
+        ]
+      }
+    },
+    {
+      "id": "GEN-02",
+      "question": "这次和上次比较变化大吗？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "get_trend",
+          "list_records"
+        ]
+      }
+    },
+    {
+      "id": "GEN-03",
+      "question": "我的尿酸正常吗？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "get_trend",
+          "find_indicator",
+          "get_record"
+        ]
+      }
+    },
+    {
+      "id": "GEN-04",
+      "question": "最近三个月查了几次？",
+      "expect": {
+        "capability": "L0",
+        "tools_any": [
+          "list_records",
+          "overview"
+        ]
+      }
+    },
+    {
+      "id": "GEN-05",
+      "question": "肌酐是什么？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "search_knowledge",
+          "find_indicator"
+        ]
+      }
+    }
+  ]
+}

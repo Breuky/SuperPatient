@@ -10,12 +10,69 @@ import time
 
 from llm import LlmError, chat, parse_json_block
 from prompts import FORBIDDEN, SYSTEM_AGENT, SYSTEM_SIMPLE
-from scope import (L1_EXPLAIN, L2_MEDICAL, L3_SERVICE, OFF_TOPIC, OFF_TOPIC_REPLY,
+from scope import (L0_DATA, L1_EXPLAIN, L2_MEDICAL, L3_SERVICE, OFF_TOPIC, OFF_TOPIC_REPLY,
                    OFF_TOPIC_SUGGESTIONS, SERVICE_REPLY, SERVICE_SUGGESTIONS,
                    ceiling_hint, classify, is_transaction)
 from tools import ToolBox
 
 MAX_TURNS = 6
+
+# 纯事实问题：答案完全来自工具返回，不需要模型组织语言。
+# 命中就走确定性路径，省一次模型调用、也避免模型把日期说错。
+FAST_FACTS = (
+    ("count", ("一共查过几次", "查过几次", "查了几次", "总共查过", "一共几次", "检查了几次")),
+    ("last_date", ("上次检查是什么时候", "最近一次是什么时候", "什么时候查的", "上次是什么时候")),
+    ("last_hospital", ("哪家医院", "哪个医院")),
+)
+
+
+def fast_fact(question):
+    q = question or ""
+    for kind, words in FAST_FACTS:
+        if any(w in q for w in words):
+            return kind
+    return None
+
+
+def _fast_answer(kind, box):
+    """只读一次 list_records，用返回值直接拼答案"""
+    data = json.loads(box.call("list_records", {"limit": 1}))
+    total = data.get("total")
+    records = data.get("records") or []
+    first = records[0] if records else {}
+
+    if kind == "count":
+        summary = "你一共有 %s 次检查记录。" % (total if total is not None else len(records))
+    elif kind == "last_date":
+        if not first:
+            summary = "还没有检查记录。"
+        else:
+            summary = "最近一次检查是 %s（%s，%s）。" % (
+                first.get("date"), first.get("category") or "未分类", first.get("hospital") or "未填医院")
+    else:
+        if not first:
+            summary = "还没有检查记录。"
+        else:
+            summary = "最近一次是在%s检查的，日期 %s。" % (
+                first.get("hospital") or "未填写医院", first.get("date"))
+
+    return {
+        "mode": "agent",
+        "capability": L0_DATA,
+        "summary": summary,
+        "highlights": [],
+        "warnings": [],
+        "out_of_scope": False,
+        "off_topic": False,
+        "scope_note": "",
+        "suggestions": [],
+        "turns": 1,
+        "elapsed_ms": 0,
+        "trace": box.trace,
+        "forced_finish": False,
+        "no_tool_used": False,
+        "usage": _empty_usage(),
+    }
 DEADLINE_SECONDS = 20
 
 # thinking 模型（如 deepseek-flash）不接受 tool_choice=required，
@@ -151,11 +208,28 @@ def run_agent(api_key, java_base, token, record_id, question, model=None, histor
             "capability": L3_SERVICE,
         }
 
+    # L0 纯事实问题：走确定性路径，不调模型
+    if capability == L0_DATA:
+        kind = fast_fact(question)
+        if kind:
+            try:
+                return _fast_answer(kind, ToolBox(java_base, token))
+            except Exception as e:      # noqa: BLE001
+                log.warning("快路径失败，回落模型: %s", e)
+
     box = ToolBox(java_base, token)
 
     # 之前的问答作为上下文；追问（「那上次呢」）必须带上，否则模型不知道指代什么
     messages = [{"role": "system", "content": SYSTEM_AGENT}]
-    for turn in (history or [])[-8:]:
+    history = list(history or [])
+    if len(history) > 6:
+        # 只保留最近 4 轮原文，更早的压成一段要点（抽取式，不调模型）
+        older, history = history[:-4], history[-4:]
+        brief = "；".join("%s：%s" % (t.get("role"), (t.get("content") or "")[:80])
+                          for t in older[-4:] if t.get("content"))
+        messages.append({"role": "user", "content": "（此前对话要点，仅供参考）" + brief})
+
+    for turn in history[-8:]:
         role = turn.get("role")
         content = (turn.get("content") or "").strip()
         if role not in ("user", "assistant") or not content:

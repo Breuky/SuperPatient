@@ -20,6 +20,8 @@ import time
 K1 = 1.5
 B = 0.75
 MIN_SCORE = 0.15          # 归一化后的最低分
+# 来源等级权重：同等相关时优先国标/行标，其次指南共识
+SOURCE_BOOST = {"A": 1.15, "B": 1.08, "C": 1.03, "D": 0.95}
 CACHE_TTL_SECONDS = 300
 
 # 问题意图 → 知识条目类型
@@ -154,6 +156,7 @@ class Index:
             boosted = raw
             if entry.get("field") in fields:
                 boosted *= 1.5
+            boosted *= SOURCE_BOOST.get(entry.get("originLevel") or "", 1.0)
             if anchored:
                 if entry.get("indicatorId") in anchored:
                     boosted *= 2.0

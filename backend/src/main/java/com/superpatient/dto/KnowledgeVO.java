@@ -13,5 +13,7 @@ public class KnowledgeVO {
     private String text;
     private String sourceId;
     private String sourceTitle;
+    /** 来源等级 A=国标/行标 B=指南共识 C=教材 D=项目自述 */
+    private String originLevel;
     private String locator;
 }

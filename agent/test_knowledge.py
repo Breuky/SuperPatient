@@ -109,6 +109,14 @@ class HybridTest(unittest.TestCase):
         r = idx.search("文本", INDICATORS, query_vector=[0.0, 1.0])
         self.assertTrue(r["hits"])
 
+    def test_source_level_boost(self):
+        same = {"indicatorId": None, "indicatorName": None, "aliases": None,
+                "field": "prep", "text": "空腹要求至少禁食 8 小时", "sourceTitle": "T", "locator": "1"}
+        entries = [dict(same, id=1, sourceId="D1", originLevel="D"),
+                   dict(same, id=2, sourceId="A1", originLevel="A")]
+        r = knowledge.Index(entries).search("空腹要多久", INDICATORS)
+        self.assertEqual("A1", r["hits"][0]["source_id"], "同为 prep 时 A 级来源应排前")
+
     def test_without_vectors_still_works(self):
         idx = knowledge.Index(ENTRIES)
         r = idx.search("LDL 是什么", INDICATORS, query_vector=[0.1, 0.9])
