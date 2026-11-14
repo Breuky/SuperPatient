@@ -46,6 +46,9 @@ POST /api/records           结构化入库，参考区间随值快照保存
 | Agent 调试 | 开发页（`/insight-logs`，不在侧栏）：每次解读的轮数、工具链、token、耗时都留痕，可展开看轨迹 |
 | 关注指标 | 标星长期关心的指标，录入页默认展开、趋势页可只看这些 |
 | 图片 | 报告照片按上传者鉴权访问，不走公开静态目录 |
+| **知识库** | 40 条指标知识条目（释义/单位换算/采血准备/区间差异），全部带来源与原文定位；检索走 BM25 + 意图路由，回答必须标出处，查不到就说没有 |
+| **导诊** | 按历史异常指标映射到科室（规则表），再查杭州 12 家三甲白名单；只给候选与依据，不承诺号源、不代办挂号 |
+| **长期记忆** | 只记录用户亲口说的偏好/事实（如常用单位），用于调整表达；推断类内容在服务层直接拒绝 |
 
 ## 技术栈
 
@@ -66,7 +69,18 @@ POST /api/records           结构化入库，参考区间随值快照保存
 mysql -uroot -p --default-character-set=utf8mb4 < schema.sql
 ```
 
-`schema.sql` 已包含全部表结构与种子数据（7 张表：user / exam_category / exam_indicator / exam_record / exam_value / reference_range / upload_file），**不需要再执行 `db/` 下的迁移脚本** —— 那些只用于升级已有库。
+`schema.sql` 已包含全部表结构与公共种子数据（**15 张表**）。
+
+```
+业务   user / exam_category / exam_indicator / exam_record / exam_value
+       reference_range / upload_file / follow_up / user_indicator_focus
+Agent  insight_log
+导诊   hospital / hospital_department
+知识库 knowledge_source / indicator_knowledge
+记忆   user_memory
+```
+
+种子：67 个公共指标、56 条参考区间、11 个知识来源、40 条知识条目、12 家医院。不含任何用户记录。`db/` 下的脚本只用于**升级已有库**。
 
 可选：导入合成演示数据（6 次血常规、两家医院、参考区间不同），用于演示趋势页的分段参考带：
 

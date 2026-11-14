@@ -675,3 +675,121 @@ JWT 无状态，服务端不维护会话，此接口仅用于前端统一调用�
 | POST | `/api/files/upload` | 上传图片 | 是 |
 | GET | `/api/files/{id}` | 读取图片（仅上传者） | 是 |
 | POST | `/api/parse/report` | 化验单抽取 | 是 |
+
+---
+
+## 十一、医院白名单（导诊）
+
+只读，数据来自本地白名单表；未人工核对的条目会返回 `verified=false`。
+
+### 11.1 按城市与科室查询
+
+```
+GET /api/hospitals?city=杭州&department=肾内科&limit=5
+```
+
+| 参数 | 必填 | 说明 |
+|---|---|---|
+| city | 否 | 城市，当前白名单只有杭州 |
+| department | 否 | 科室名，与导诊输出一致（如 内分泌科 / 肾内科 / 消化内科） |
+| limit | 否 | 最多返回条数，上限 10 |
+
+```
+{
+  "code": 1,
+  "data": [
+    {
+      "hospitalId": 12,
+      "name": "浙江大学医学院附属第一医院",
+      "city": "杭州",
+      "level": "三甲",
+      "hospitalType": "综合",
+      "department": "肾内科",
+      "specialtyLevel": null,
+      "bookingUrl": null,
+      "sourceUrl": "https://wsjkw.zj.gov.cn/...",
+      "verified": true,
+      "departmentVerified": false
+    }
+  ]
+}
+```
+
+`verified` 表示**医院等级**有官方文件来源；`departmentVerified` 表示**该科室资质**已核对。两者分开，避免把「三甲」当成「这个科很强」。
+
+---
+
+## 十二、知识条目（RAG 语料）
+
+### 12.1 全量已核对条目
+
+```
+GET /api/knowledge
+```
+
+只返回 `verified_at` 非空的条目，未核对的不进检索索引。Agent 侧首次调用时拉取全量，进程内建索引并缓存 5 分钟。
+
+```
+{
+  "code": 1,
+  "data": [
+    {
+      "id": 21,
+      "indicatorId": null,
+      "indicatorName": null,
+      "field": "prep",
+      "text": "空腹要求至少禁食 8 小时，以 12～14 小时为宜，但不宜超过 16 小时…",
+      "sourceId": "WST661-2020",
+      "sourceTitle": "静脉血液标本采集指南",
+      "originLevel": "A",
+      "locator": "4.1"
+    }
+  ]
+}
+```
+
+`field` 取值：`definition` / `why_vary` / `prep` / `compare` / `interference` / `unit_note` / `report_note`。
+`originLevel`：A=国标/行标，B=指南共识，C=教材表述，D=项目自述。
+
+---
+
+## 十三、长期记忆
+
+只接受用户亲口说的偏好与事实，**拒绝推断类内容**（`kind` 只允许 `preference` / `fact`）。记忆只影响表达方式，不作为检查数据。
+
+### 13.1 我的记忆
+
+```
+GET /api/memory
+```
+
+### 13.2 记住一条
+
+```
+POST /api/memory
+{"kind": "preference", "key": "unit", "value": "习惯看 mg/dL"}
+```
+
+`kind` 传 `inference` 等其它值会返回业务错误「只支持记录偏好或用户自述事实」。
+
+### 13.3 删除
+
+```
+DELETE /api/memory/{id}    删除一条
+DELETE /api/memory         清空全部（软删）
+```
+
+---
+
+## 十四、解读接口的扩展字段
+
+`POST /api/insights/report` 的返回体在原字段之外增加了四块，供前端按类型渲染：
+
+| 字段 | 何时出现 | 说明 |
+|---|---|---|
+| capability | 总是 | L0 数据查询 / L1 数据解释 / L2 医学判断 / L3 服务代办 |
+| triage | 调用了 suggest_departments | `{departments:[{name,score,reasons}], based_on:[…], note}` |
+| hospitals | 调用了 find_hospitals | `{hospitals:[…], note}` |
+| knowledge | 调用了 search_knowledge | `{hits:[{text,source_title,source_id,locator}], note}` |
+
+三类结构化结果与 `summary` 物理隔离：`summary` 只能写工具查到的事实，知识条目必须带出处。
