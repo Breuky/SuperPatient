@@ -45,9 +45,26 @@ class RecordServiceTest {
 
     @InjectMocks private RecordService recordService;
 
+
+    private final java.util.Map<Integer, ExamIndicator> indicatorPool = new java.util.HashMap<>();
+
+    /** 同时为 findById 和 findByIds 打桩：保存链路走批量查询 */
+    private void stubIndicator(ExamIndicator ind) {
+        indicatorPool.put(ind.getId(), ind);
+        org.mockito.Mockito.lenient().when(indicatorMapper.findById(ind.getId())).thenReturn(ind);
+    }
+
     @BeforeEach
     void setUp() {
         CurrentHolder.setCurrentId(1L);
+        org.mockito.Mockito.lenient().when(indicatorMapper.findByIds(org.mockito.ArgumentMatchers.anyCollection()))
+                .thenAnswer(inv -> {
+                    java.util.Collection<Integer> ids = inv.getArgument(0);
+                    return ids.stream().map(indicatorPool::get)
+                            .filter(java.util.Objects::nonNull)
+                            .collect(java.util.stream.Collectors.toList());
+                });
+
     }
 
     @AfterEach
@@ -57,10 +74,10 @@ class RecordServiceTest {
 
     @Test
     void flagsValuesOutsideIndicatorRange() {
-        when(indicatorMapper.findById(1)).thenReturn(indicator(1, "4", "10"));   // 低于下限
-        when(indicatorMapper.findById(2)).thenReturn(indicator(2, "4", "10"));   // 区间内
-        when(indicatorMapper.findById(3)).thenReturn(indicator(3, "4", "10"));   // 高于上限
-        when(indicatorMapper.findById(4)).thenReturn(indicator(4, "4", "10"));   // 恰好等于上限
+        stubIndicator(indicator(1, "4", "10"));   // 低于下限
+        stubIndicator(indicator(2, "4", "10"));   // 区间内
+        stubIndicator(indicator(3, "4", "10"));   // 高于上限
+        stubIndicator(indicator(4, "4", "10"));   // 恰好等于上限
 
         recordService.create(request(
                 item(1, "3.2"),
@@ -73,7 +90,7 @@ class RecordServiceTest {
 
     @Test
     void treatsIndicatorWithoutRangeAsNormal() {
-        when(indicatorMapper.findById(5)).thenReturn(indicator(5, null, null));
+        stubIndicator(indicator(5, null, null));
 
         recordService.create(request(item(5, "999")));
 
@@ -82,7 +99,7 @@ class RecordServiceTest {
 
     @Test
     void reportRangeOverridesIndicatorDefault() {
-        when(indicatorMapper.findById(1)).thenReturn(indicator(1, "4", "10"));
+        stubIndicator(indicator(1, "4", "10"));
         ValueItem item = item(1, "3.2");
         item.setRefMin(new BigDecimal("3"));
         item.setRefMax(new BigDecimal("5"));
@@ -98,7 +115,7 @@ class RecordServiceTest {
 
     @Test
     void writesRecordUnderCurrentUser() {
-        when(indicatorMapper.findById(1)).thenReturn(indicator(1, "4", "10"));
+        stubIndicator(indicator(1, "4", "10"));
 
         recordService.create(request(item(1, "6.8")));
 
@@ -112,7 +129,7 @@ class RecordServiceTest {
     void rejectsValueForAnotherUsersPrivateIndicator() {
         ExamIndicator foreign = indicator(9, "4", "10");
         foreign.setOwnerId(999L);
-        when(indicatorMapper.findById(9)).thenReturn(foreign);
+        stubIndicator(foreign);
 
         BusinessException e = assertThrows(BusinessException.class,
                 () -> recordService.create(request(item(9, "6.8"))));
@@ -121,7 +138,7 @@ class RecordServiceTest {
 
     @Test
     void keepsRangeSourceWhenCandidateCameFromRule() {
-        when(indicatorMapper.findById(1)).thenReturn(indicator(1, "4", "10"));
+        stubIndicator(indicator(1, "4", "10"));
         ValueItem it = item(1, "6.8");
         it.setRefMin(new BigDecimal("3.9"));
         it.setRefMax(new BigDecimal("6.1"));
@@ -136,11 +153,11 @@ class RecordServiceTest {
 
     @Test
     void snapshotsRangeWhenRuleComesFromStandard() {
-        when(indicatorMapper.findById(1)).thenReturn(indicator(1, null, null));
-        when(referenceRangeService.resolve(org.mockito.ArgumentMatchers.any(),
+        stubIndicator(indicator(1, null, null));
+        when(referenceRangeService.resolveBatch(org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any()))
-                .thenReturn(new ReferenceRangeService.Resolved(
-                        new BigDecimal("3.5"), new BigDecimal("9.5"), "3.5-9.5", "WS/T 405-2012"));
+                .thenReturn(java.util.Map.of(1, new ReferenceRangeService.Resolved(
+                        new BigDecimal("3.5"), new BigDecimal("9.5"), "3.5-9.5", "WS/T 405-2012")));
 
         recordService.create(request(item(1, "9.8")));
 
@@ -201,6 +218,7 @@ class RecordServiceTest {
         indicator.setId(id);
         indicator.setName("指标" + id);
         indicator.setValueType("number");
+        indicator.setStatus(1);
         indicator.setNormalMin(min == null ? null : new BigDecimal(min));
         indicator.setNormalMax(max == null ? null : new BigDecimal(max));
         return indicator;

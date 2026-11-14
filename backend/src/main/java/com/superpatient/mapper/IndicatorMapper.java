@@ -17,6 +17,9 @@ public interface IndicatorMapper {
 
     /** 不带归属过滤，仅用于渲染历史数据（值已经落在库里了，指标被禁用也要能显示名字） */
     ExamIndicator findById(@Param("id") Integer id);
+
+    /** 批量查定义，保存记录时用，避免逐个查造成 N+1 */
+    List<ExamIndicator> findByIds(@Param("ids") java.util.Collection<Integer> ids);
     int insert(ExamIndicator indicator);
     int update(ExamIndicator indicator);
     int updateStatus(@Param("id") Integer id, @Param("status") Integer status);

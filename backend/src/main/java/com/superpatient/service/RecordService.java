@@ -20,6 +20,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 @Service
@@ -206,9 +207,24 @@ public class RecordService {
         List<ExamValue> values = new ArrayList<>();
         if (items == null) return values;
 
+        // 一次查回全部指标定义 + 一次算完全部区间：20 个指标从 41 次查询降到 3 次
+        List<Integer> ids = items.stream().map(ValueItem::getIndicatorId)
+                .filter(java.util.Objects::nonNull).distinct().toList();
+        Map<Integer, ExamIndicator> pool = ids.isEmpty() ? Map.of()
+                : indicatorMapper.findByIds(ids).stream()
+                    .collect(java.util.stream.Collectors.toMap(ExamIndicator::getId, it -> it));
+        Map<Integer, ReferenceRangeService.Resolved> resolved = ids.isEmpty() ? Map.of()
+                : referenceRangeService.resolveBatch(ids, ctx);
+
         for (ValueItem item : items) {
-            ExamIndicator ind = indicatorMapper.findById(item.getIndicatorId());
-            if (ind == null) continue;
+            ExamIndicator ind = pool.get(item.getIndicatorId());
+            if (ind == null) {
+                // 静默跳过会让用户以为「保存成功」，实际少了一项
+                throw new BusinessException("指标不存在: " + item.getIndicatorId());
+            }
+            if (ind.getStatus() != null && ind.getStatus() != 1) {
+                throw new BusinessException("指标已停用: " + ind.getName());
+            }
             // 私有指标只能挂到 owner 自己的记录上，否则拒绝整条请求
             if (!ind.isVisibleTo(userId)) {
                 throw new BusinessException("指标不存在或无权使用: " + item.getIndicatorId());
@@ -223,7 +239,7 @@ public class RecordService {
             v.setRawName(item.getRawName());
             v.setRawUnit(item.getRawUnit());
 
-            ReferenceRangeService.Resolved range = effectiveRange(item, ind, ctx);
+            ReferenceRangeService.Resolved range = effectiveRange(item, ind, resolved.get(ind.getId()));
             // 报告自带或规则推算出来的区间都落快照（规则来源可能是 "rule"，
             // 也可能带具体出处如 "WS/T 405-2012"）；指标默认值不冻结
             if (range.source() != null && !"default".equals(range.source())) {
@@ -241,7 +257,7 @@ public class RecordService {
      * 生效区间：请求里带的报告区间 &gt; 规则表 &gt; 指标默认值
      */
     private ReferenceRangeService.Resolved effectiveRange(ValueItem item, ExamIndicator ind,
-                                                          ReferenceRangeService.UserContext ctx) {
+                                                          ReferenceRangeService.Resolved preResolved) {
         if (item.getRefMin() != null || item.getRefMax() != null) {
             // 带上来源：报告没印区间时，候选里的区间其实是规则算的（source=rule）
             String source = item.getRefSource() != null && !item.getRefSource().isBlank()
@@ -249,9 +265,8 @@ public class RecordService {
             return new ReferenceRangeService.Resolved(item.getRefMin(), item.getRefMax(),
                     item.getRefText(), source);
         }
-        ReferenceRangeService.Resolved rule = referenceRangeService.resolve(ind.getId(), ctx);
-        if (rule != null) {
-            return rule;
+        if (preResolved != null) {
+            return preResolved;
         }
         return new ReferenceRangeService.Resolved(ind.getNormalMin(), ind.getNormalMax(), null, "default");
     }

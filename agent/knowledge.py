@@ -204,6 +204,7 @@ class Index:
             "source_id": self.docs[pos]["entry"].get("sourceId"),
             "source_title": self.docs[pos]["entry"].get("sourceTitle"),
             "locator": self.docs[pos]["entry"].get("locator"),
+            "origin_level": self.docs[pos]["entry"].get("originLevel"),
         } for s, pos in scored[:top_k]]
 
         return {

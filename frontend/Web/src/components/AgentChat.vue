@@ -73,6 +73,7 @@
             <div v-for="(k, i) in m.data.knowledge.hits" :key="i" class="know-item">
               <div class="know-text">{{ k.text }}</div>
               <div class="know-src">
+                <span v-if="k.origin_level" class="know-level">{{ k.origin_level }} 级</span>
                 {{ k.source_title }}<span v-if="k.locator"> · {{ k.locator }}</span>
               </div>
             </div>
@@ -313,6 +314,7 @@ defineExpose({ resetChat })
 .know-item { padding: 4px 0; border-top: 0.5px dashed var(--border-light); }
 .know-item:first-of-type { border-top: none; }
 .know-text { font-size: var(--font-xs); color: var(--text-secondary); line-height: 1.5; }
+.know-level { display:inline-block; padding:0 4px; margin-right:4px; border-radius:3px; background: var(--bg-hover, #eee); color: var(--text-secondary); }
 .know-src { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
 .triage { margin-top: 10px; padding: 10px 12px; background: var(--bg-primary); border-radius: var(--radius-sm); }
 .triage-head { font-size: var(--font-xs); color: var(--text-hint); margin-bottom: 6px; }

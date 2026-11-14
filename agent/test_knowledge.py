@@ -85,7 +85,7 @@ class KnowledgeTest(unittest.TestCase):
     def test_citation_fields_present(self):
         r = self.idx.search("糖化是什么", INDICATORS)
         hit = r["hits"][0]
-        for key in ("source_id", "source_title", "locator", "text"):
+        for key in ("source_id", "source_title", "locator", "text", "origin_level"):
             self.assertTrue(hit.get(key), key)
 
     def test_clean_strips_filler(self):
