@@ -147,6 +147,32 @@ class ToolBox:
                 },
             },
         },
+        {
+            "type": "function",
+            "function": {
+                "name": "recall_memory",
+                "description": "读取用户此前明确表达过的偏好或自述事实（如常用单位、关注指标）。"
+                               "回答前可先看一眼，用来调整措辞与单位，但不能把这些当作检查数据。",
+                "parameters": {"type": "object", "properties": {}},
+            },
+        },
+        {
+            "type": "function",
+            "function": {
+                "name": "remember_memory",
+                "description": "当用户明确说出长期有效的偏好或事实时记录一条，例如「以后都用 mg/dL」「我对青霉素过敏」。"
+                               "只在用户亲口说明时调用，不要记录推测、诊断或结论。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "kind": {"type": "string", "enum": ["preference", "fact"]},
+                        "key": {"type": "string", "description": "简短的键，如 unit / allergy / focus"},
+                        "value": {"type": "string", "description": "用户原话要点"},
+                    },
+                    "required": ["kind", "key", "value"],
+                },
+            },
+        },
     ]
 
     # ---------- 执行 ----------
@@ -265,6 +291,28 @@ class ToolBox:
         return [{"gender": r.get("gender"), "age_min": r.get("ageMin"), "age_max": r.get("ageMax"),
                  "ref_min": r.get("refMin"), "ref_max": r.get("refMax"), "source": r.get("source")}
                 for r in data]
+
+    def _recall_memory(self):
+        data = self._get("/api/memory") or []
+        return {"memories": [{"kind": m.get("kind"), "key": m.get("memoryKey"),
+                              "value": m.get("value")} for m in data],
+                "note": "记忆只用于调整表达方式，不能作为检查数据"}
+
+    def _remember_memory(self, kind=None, key=None, value=None):
+        if kind not in ("preference", "fact"):
+            raise ToolError("kind 只能是 preference 或 fact")
+        if not key or not value:
+            raise ToolError("key 与 value 不能为空")
+        req = urllib.request.Request(
+            self.java_base + "/api/memory",
+            data=json.dumps({"kind": kind, "key": key, "value": value}, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json", "token": self.token},
+            method="POST")
+        with urllib.request.urlopen(req, timeout=self.timeout) as resp:
+            body = json.loads(resp.read().decode("utf-8"))
+        if body.get("code") != 1:
+            raise ToolError(body.get("msg") or "记录失败")
+        return {"saved": True, "kind": kind, "key": key}
 
     def _search_knowledge(self, query=None, top_k=3):
         """检索知识条目：索引在进程内，语料来自 Java 的 /api/knowledge"""
