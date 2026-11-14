@@ -135,9 +135,16 @@ class Index:
             return {"hits": [], "note": "知识库为空", "query": {"cleaned": clean(query)}}
 
         cleaned, anchored, fields = normalize(query, indicators)
+        flat_query = cleaned.replace(" ", "")
         tokens = tokenize(cleaned)
         if not tokens:
             return {"hits": [], "note": "问题太短，无法检索", "query": {"cleaned": cleaned}}
+
+        # 问题里出现多个指标名时取最长的那个："糖化血红蛋白" 不该命中 "血红蛋白" 的条目
+        all_names = {e.get("indicatorName") for e in (self.entries or []) if e.get("indicatorName")}
+        all_names |= {(i.get("name") or "") for i in (indicators or ())}
+        matched_name = max((n for n in all_names
+                            if n and n.replace(" ", "") in flat_query), key=len, default="")
 
         idf_sum = sum(self._idf(t) for t in set(tokens)) or 1.0
         scored = []
@@ -157,6 +164,13 @@ class Index:
             if entry.get("field") in fields:
                 boosted *= 1.5
             boosted *= SOURCE_BOOST.get(entry.get("originLevel") or "", 1.0)
+
+            # 名称锚定：同一指标可能同时存在公共/私有两条记录（id 不同），
+            # 只按 id 锚定会漏掉挂在另一条上的知识
+            entry_name = (entry.get("indicatorName") or "").replace(" ", "")
+            is_named = bool(entry_name) and entry_name == matched_name
+            if is_named:
+                boosted *= 2.0
             if anchored:
                 if entry.get("indicatorId") in anchored:
                     boosted *= 2.0
@@ -166,7 +180,8 @@ class Index:
                     boosted *= 0.2
 
             score = boosted / idf_sum
-            if score >= min_score:
+            # 用户点名了这个指标时，即使绝对分不高也保留（短语料里 IDF 会被稀释）
+            if score >= min_score or is_named:
                 scored.append((score, pos))
 
         if not scored:
@@ -190,8 +205,15 @@ class Index:
         # 该类型一条都没有时返回空，而不是拿相近条目凑——凑出来的引用比没有更糟。
         if fields:
             same_field = [(s, pos) for s, pos in scored if self.docs[pos]["entry"].get("field") in fields]
+            # 被点名的指标，其条目即使 field 不同也保留：
+            # 用户问「肌酐为什么…」，definition 条目同样相关
+            named = [(s, pos) for s, pos in scored
+                     if (self.docs[pos]["entry"].get("indicatorName") or "").replace(" ", "") == matched_name]
             if same_field:
-                scored = same_field
+                keep = {pos for _, pos in same_field} | {pos for _, pos in named}
+                scored = [(s, pos) for s, pos in scored if pos in keep]
+            elif named:
+                scored = named
             else:
                 return {"hits": [], "note": "知识库里没有「%s」类条目" % "/".join(fields),
                         "query": {"cleaned": cleaned, "anchored": anchored, "fields": fields}}

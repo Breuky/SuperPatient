@@ -61,6 +61,18 @@ class KnowledgeTest(unittest.TestCase):
         names = [h["indicator"] for h in r["hits"]]
         self.assertNotIn("低密度脂蛋白胆固醇", names)
 
+    def test_named_indicator_survives_field_filter(self):
+        # 问法带「为什么」→ 意图是 why_vary，但被点名的指标只有 definition 条目，也要能召回
+        entries = [
+            {"id": 1, "indicatorId": 9, "indicatorName": "肌酐", "aliases": "Cr",
+             "field": "definition", "text": "肌酐需结合 eGFR 判读", "sourceId": "S", "sourceTitle": "T", "locator": "1"},
+            {"id": 2, "indicatorId": None, "indicatorName": None, "aliases": None,
+             "field": "why_vary", "text": "不同医院参考区间不同", "sourceId": "S2", "sourceTitle": "T2", "locator": "2"},
+        ]
+        r = knowledge.Index(entries).search("肌酐为什么要结合 eGFR 看", INDICATORS)
+        names = [h["indicator"] for h in r["hits"]]
+        self.assertIn("肌酐", names)
+
     def test_off_domain_returns_empty(self):
         r = self.idx.search("今天天气怎么样", INDICATORS)
         self.assertEqual([], r["hits"])
