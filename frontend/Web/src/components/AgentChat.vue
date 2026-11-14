@@ -123,6 +123,9 @@
                 <el-tag v-if="h.specialty_level" size="small" type="success" effect="plain">
                   {{ h.specialty_level }}
                 </el-tag>
+                <el-tag v-else-if="h.department_verified" size="small" type="info" effect="plain">
+                  已核对 · 未标注重点专科
+                </el-tag>
                 <el-tag v-else size="small" type="info" effect="plain">科室资质未核对</el-tag>
               </div>
               <div class="hmeta">
