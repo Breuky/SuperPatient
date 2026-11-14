@@ -25,7 +25,11 @@
         <if test="department != null and department != ''">
             AND hd.department = #{department}
         </if>
-        ORDER BY (hd.specialty_level IS NULL), hd.specialty_level DESC, h.id
+        ORDER BY (hd.specialty_level IS NULL),
+                 CASE WHEN hd.specialty_level LIKE '国家%' THEN 0
+                      WHEN hd.specialty_level LIKE '省级%' THEN 1
+                      ELSE 2 END,
+                 h.id
         LIMIT #{limit}
     </select>
 </mapper>
