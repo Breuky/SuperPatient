@@ -1,83 +1,50 @@
--- ============================================================
--- 演示数据（全部为合成数据，不含任何真实个人健康信息）
--- 目的: 演示"同一指标在不同医院/不同时期参考区间不同"，以及抽取溯源字段
--- 幂等: 重复执行会先清空该演示账号的记录再重建
--- 删除: 见文件末尾
--- ============================================================
+-- 演示数据：demo 账号 8 次抽血记录（2025-08 ~ 2026-10），指标呈改善趋势
+-- 用法：
+--   mysql -uroot -p --default-character-set=utf8mb4 super_patient < db/demo_trend_data.sql
+-- 前提：已执行 schema.sql（公共指标与参考区间就绪）；仅用于演示，可随时删除。
 
-SET NAMES utf8mb4;
-
--- 演示账号: demo_trend / demo1234
-INSERT INTO `user` (username, password_hash, nickname, gender, birth_date, notes)
-VALUES ('demo_trend', '$2a$10$4Y8UtJSTpAitmeigyR5uqOxlb4Ss19zTBY8gQzVsGN2E1jxpoXjje', '演示用户', 1, '1980-04-18', '合成示例数据，用于演示趋势与参考区间变化')
-ON DUPLICATE KEY UPDATE nickname = '演示用户';
-SET @uid := (SELECT id FROM `user` WHERE username = 'demo_trend');
-
-DELETE FROM exam_record WHERE user_id = @uid;
-
-INSERT INTO exam_record (user_id, category_id, exam_date, hospital) VALUES (@uid, 1, '2025-09-15 09:30:00', '市第一人民医院');
-SET @r := LAST_INSERT_ID();
-INSERT INTO exam_value (record_id, indicator_id, value_decimal, ref_min, ref_max, ref_text, ref_source, raw_name, is_abnormal)
-SELECT @r, i.id, v.val, v.rmin, v.rmax, v.rtext, 'report', v.raw, v.abn
-FROM exam_indicator i
-JOIN (      SELECT '白细胞计数' nm, 'WBC' raw, 6.8 val, 4 rmin, 10 rmax, '4.0-10.0' rtext, 0 abn
-      UNION ALL SELECT '血红蛋白' nm, 'HGB' raw, 142 val, 120 rmin, 160 rmax, '120-160' rtext, 0 abn
-      UNION ALL SELECT 'C反应蛋白' nm, 'CRP' raw, 5.2 val, 0 rmin, 10 rmax, '0-10' rtext, 0 abn) v ON v.nm = i.name
-WHERE i.category_id = 1;
-
-INSERT INTO exam_record (user_id, category_id, exam_date, hospital) VALUES (@uid, 1, '2025-10-20 10:00:00', '市第二人民医院');
-SET @r := LAST_INSERT_ID();
-INSERT INTO exam_value (record_id, indicator_id, value_decimal, ref_min, ref_max, ref_text, ref_source, raw_name, is_abnormal)
-SELECT @r, i.id, v.val, v.rmin, v.rmax, v.rtext, 'report', v.raw, v.abn
-FROM exam_indicator i
-JOIN (      SELECT '白细胞计数' nm, 'WBC' raw, 5.4 val, 3.5 rmin, 9.5 rmax, '3.5-9.5' rtext, 0 abn
-      UNION ALL SELECT '血红蛋白' nm, 'Hb' raw, 128 val, 115 rmin, 150 rmax, '115-150' rtext, 0 abn
-      UNION ALL SELECT 'C反应蛋白' nm, 'hs-CRP' raw, 12 val, 0 rmin, 8 rmax, '0-8' rtext, 1 abn) v ON v.nm = i.name
-WHERE i.category_id = 1;
-
-INSERT INTO exam_record (user_id, category_id, exam_date, hospital) VALUES (@uid, 1, '2025-11-24 09:45:00', '市第一人民医院');
-SET @r := LAST_INSERT_ID();
-INSERT INTO exam_value (record_id, indicator_id, value_decimal, ref_min, ref_max, ref_text, ref_source, raw_name, is_abnormal)
-SELECT @r, i.id, v.val, v.rmin, v.rmax, v.rtext, 'report', v.raw, v.abn
-FROM exam_indicator i
-JOIN (      SELECT '白细胞计数' nm, '白细胞' raw, 3.1 val, 4 rmin, 10 rmax, '4.0-10.0' rtext, 2 abn
-      UNION ALL SELECT '血红蛋白' nm, 'HGB' raw, 116 val, 120 rmin, 160 rmax, '120-160' rtext, 2 abn
-      UNION ALL SELECT 'C反应蛋白' nm, 'CRP' raw, 26.4 val, 0 rmin, 10 rmax, '0-10' rtext, 1 abn) v ON v.nm = i.name
-WHERE i.category_id = 1;
-
-INSERT INTO exam_record (user_id, category_id, exam_date, hospital) VALUES (@uid, 1, '2025-12-22 10:20:00', '市第二人民医院');
-SET @r := LAST_INSERT_ID();
-INSERT INTO exam_value (record_id, indicator_id, value_decimal, ref_min, ref_max, ref_text, ref_source, raw_name, is_abnormal)
-SELECT @r, i.id, v.val, v.rmin, v.rmax, v.rtext, 'report', v.raw, v.abn
-FROM exam_indicator i
-JOIN (      SELECT '白细胞计数' nm, 'WBC' raw, 2.8 val, 3.5 rmin, 9.5 rmax, '3.5-9.5' rtext, 2 abn
-      UNION ALL SELECT '血红蛋白' nm, 'Hb' raw, 105 val, 115 rmin, 150 rmax, '115-150' rtext, 2 abn
-      UNION ALL SELECT 'C反应蛋白' nm, 'hs-CRP' raw, 18.5 val, 0 rmin, 8 rmax, '0-8' rtext, 1 abn) v ON v.nm = i.name
-WHERE i.category_id = 1;
-
-INSERT INTO exam_record (user_id, category_id, exam_date, hospital) VALUES (@uid, 1, '2026-01-19 09:10:00', '市第一人民医院');
-SET @r := LAST_INSERT_ID();
-INSERT INTO exam_value (record_id, indicator_id, value_decimal, ref_min, ref_max, ref_text, ref_source, raw_name, is_abnormal)
-SELECT @r, i.id, v.val, v.rmin, v.rmax, v.rtext, 'report', v.raw, v.abn
-FROM exam_indicator i
-JOIN (      SELECT '白细胞计数' nm, 'WBC' raw, 4.6 val, 4 rmin, 10 rmax, '4.0-10.0' rtext, 0 abn
-      UNION ALL SELECT '血红蛋白' nm, 'HGB' raw, 118 val, 120 rmin, 160 rmax, '120-160' rtext, 2 abn
-      UNION ALL SELECT 'C反应蛋白' nm, 'CRP' raw, 8.1 val, 0 rmin, 10 rmax, '0-10' rtext, 0 abn) v ON v.nm = i.name
-WHERE i.category_id = 1;
-
-INSERT INTO exam_record (user_id, category_id, exam_date, hospital) VALUES (@uid, 1, '2026-02-23 09:50:00', '市第一人民医院');
-SET @r := LAST_INSERT_ID();
-INSERT INTO exam_value (record_id, indicator_id, value_decimal, ref_min, ref_max, ref_text, ref_source, raw_name, is_abnormal)
-SELECT @r, i.id, v.val, v.rmin, v.rmax, v.rtext, 'report', v.raw, v.abn
-FROM exam_indicator i
-JOIN (      SELECT '白细胞计数' nm, 'WBC' raw, 5.9 val, 4 rmin, 10 rmax, '4.0-10.0' rtext, 0 abn
-      UNION ALL SELECT '血红蛋白' nm, 'HGB' raw, 132 val, 120 rmin, 160 rmax, '120-160' rtext, 0 abn
-      UNION ALL SELECT 'C反应蛋白' nm, 'CRP' raw, 4.9 val, 0 rmin, 10 rmax, '0-10' rtext, 0 abn) v ON v.nm = i.name
-WHERE i.category_id = 1;
-
-SELECT '演示数据已写入' AS msg, @uid AS user_id,
-       (SELECT COUNT(*) FROM exam_record WHERE user_id = @uid) AS records,
-       (SELECT COUNT(*) FROM exam_value v JOIN exam_record r ON v.record_id = r.id WHERE r.user_id = @uid) AS values_cnt;
-
--- 删除演示数据（按需执行）:
--- DELETE FROM `user` WHERE username = 'demo_trend';
+USE super_patient;
+SET FOREIGN_KEY_CHECKS = 0;
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+/*!40000 ALTER TABLE `exam_record` DISABLE KEYS */;
+INSERT INTO `exam_record` (`id`, `user_id`, `category_id`, `exam_date`, `hospital`, `doctor`, `notes`, `image_url`, `created_at`, `updated_at`) VALUES (48,1,1,'2025-08-12 08:40:00','市第一人民医院',NULL,'演示数据',NULL,'2026-11-14 16:35:33','2026-11-14 16:35:33'),(49,1,1,'2025-11-25 09:10:00','市第二人民医院',NULL,'演示数据',NULL,'2026-11-14 16:35:33','2026-11-14 16:35:33'),(50,1,1,'2026-01-15 08:30:00','市第一人民医院',NULL,'演示数据',NULL,'2026-11-14 16:35:33','2026-11-14 16:35:33'),(1,1,1,'2026-03-28 09:30:00','市第一人民医院','王医生','年度体检，空腹',NULL,'2026-10-21 16:11:32','2026-10-21 16:11:32'),(2,1,1,'2026-05-20 10:00:00','市第二人民医院','李医生','复查',NULL,'2026-10-21 16:11:32','2026-10-21 16:11:32'),(3,1,3,'2026-06-15 14:00:00','市第一人民医院','王医生','常规复查',NULL,'2026-10-21 16:11:32','2026-10-21 16:11:32'),(51,1,1,'2026-08-05 08:20:00','市第二人民医院',NULL,'演示数据',NULL,'2026-11-14 16:35:33','2026-11-14 16:35:33'),(44,1,1,'2026-10-18 08:30:00','演示数据-某三甲医院',NULL,'用于演示导诊，可删除',NULL,'2026-11-12 14:10:17','2026-11-12 14:10:17');
+/*!40000 ALTER TABLE `exam_record` ENABLE KEYS */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+/*!40000 ALTER TABLE `exam_value` DISABLE KEYS */;
+INSERT INTO `exam_value` (`id`, `record_id`, `indicator_id`, `value_decimal`, `value_text`, `ref_min`, `ref_max`, `ref_text`, `ref_source`, `raw_name`, `raw_unit`, `is_abnormal`, `created_at`) VALUES (1,1,1,142.0000,NULL,120.0000,160.0000,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(2,1,2,6.8000,NULL,4.0000,10.0000,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(3,1,5,185.0000,NULL,100.0000,300.0000,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(4,1,6,6.4000,NULL,3.9000,6.1000,NULL,NULL,NULL,NULL,1,'2026-10-21 16:11:32'),(5,1,8,5.6000,NULL,2.8000,5.2000,NULL,NULL,NULL,NULL,1,'2026-10-21 16:11:32'),(6,1,18,5.2000,NULL,0.0000,10.0000,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(8,2,1,138.0000,NULL,115.0000,150.0000,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(9,2,2,5.4000,NULL,3.5000,9.5000,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(10,2,5,210.0000,NULL,125.0000,350.0000,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(11,2,6,5.8000,NULL,4.0000,6.0000,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(12,2,8,5.1000,NULL,3.0000,5.7000,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(13,2,18,3.1000,NULL,0.0000,8.0000,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(15,3,23,NULL,'胸部',NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(16,3,24,NULL,'双肺纹理清晰，未见明显异常密度影',NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(17,3,25,NULL,'胸部 CT 未见明显异常',NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-10-21 16:11:32'),(88,44,76,7.2000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-12 14:10:17'),(89,44,77,108.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-12 14:10:17'),(90,44,78,32.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-12 14:10:17'),(94,48,76,7.6000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(95,48,79,5.8000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(96,48,80,2.3000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(97,48,81,3.8000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(98,48,82,1.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(99,48,78,58.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(100,48,86,18.4000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(101,48,77,98.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(102,48,85,6.2000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(103,48,83,72.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(104,48,84,45.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(105,48,18,3.2000,NULL,NULL,6.0000,NULL,'WS/T 404.9-2026',NULL,NULL,0,'2026-11-14 16:35:33'),(106,49,76,7.1000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(107,49,79,5.4000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(108,49,80,2.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(109,49,81,3.5000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(110,49,82,1.0500,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(111,49,78,49.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(112,49,86,16.8000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(113,49,77,101.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(114,49,85,6.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(115,49,83,73.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(116,49,84,46.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(117,49,18,2.4000,NULL,NULL,6.0000,NULL,'WS/T 404.9-2026',NULL,NULL,0,'2026-11-14 16:35:33'),(118,50,76,6.8000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(119,50,79,5.1000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(120,50,80,1.8000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(121,50,81,3.2000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(122,50,82,1.1000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(123,50,78,44.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(124,50,86,15.2000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(125,50,77,103.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(126,50,85,5.9000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(127,50,83,71.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(128,50,84,45.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(129,50,18,1.8000,NULL,NULL,6.0000,NULL,'WS/T 404.9-2026',NULL,NULL,0,'2026-11-14 16:35:33'),(130,51,76,6.1000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(131,51,79,4.6000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(132,51,80,1.4000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(133,51,81,2.9000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(134,51,82,1.2000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(135,51,78,32.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(136,51,86,14.1000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(137,51,77,104.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'2026-11-14 16:35:33'),(138,51,85,5.6000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(139,51,83,74.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(140,51,84,47.0000,NULL,NULL,NULL,NULL,NULL,NULL,NULL,0,'2026-11-14 16:35:33'),(141,51,18,1.5000,NULL,NULL,6.0000,NULL,'WS/T 404.9-2026',NULL,NULL,0,'2026-11-14 16:35:33');
+/*!40000 ALTER TABLE `exam_value` ENABLE KEYS */;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+SET FOREIGN_KEY_CHECKS = 1;

@@ -8,10 +8,30 @@
         </div>
         <div class="actions">
           <span class="hint">模型自己决定查哪些数据，可以连续追问</span>
+          <el-button text size="small" @click="openMemory">记忆</el-button>
           <el-button v-if="messages.length" text size="small" @click="resetChat">新对话</el-button>
         </div>
       </div>
     </template>
+
+    <el-dialog v-model="memoryVisible" title="我记住的东西" width="460px">
+      <p class="memory-hint">
+        只记录你亲口说过的偏好与事实，用来调整回答的措辞，不作为检查数据。
+      </p>
+      <el-empty v-if="!memories.length" description="还没有记录" :image-size="70" />
+      <div v-for="m in memories" :key="m.id" class="memory-item">
+        <div class="memory-main">
+          <el-tag size="small" effect="plain">{{ m.kind === 'preference' ? '偏好' : '事实' }}</el-tag>
+          <span class="memory-key">{{ m.memoryKey }}</span>
+          <span class="memory-value">{{ m.value }}</span>
+        </div>
+        <el-button text size="small" type="danger" @click="removeMemory(m.id)">删除</el-button>
+      </div>
+      <template #footer>
+        <el-button size="small" :disabled="!memories.length" @click="clearMemory">全部清除</el-button>
+        <el-button size="small" type="primary" @click="memoryVisible = false">关闭</el-button>
+      </template>
+    </el-dialog>
 
     <div ref="chatBox" class="chat">
       <div v-if="!messages.length" class="chat-empty">
@@ -147,6 +167,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
 import { insightApi } from '@/api/insight'
+import { memoryApi } from '@/api/memory'
 
 const props = defineProps({
   /** 有值 = 锁定这条记录；不传 = 全局助手，范围是当前用户全部记录 */
@@ -250,6 +271,30 @@ async function send() {
   }
 }
 
+// ---------- 长期记忆 ----------
+const memoryVisible = ref(false)
+const memories = ref([])
+
+async function openMemory() {
+  memoryVisible.value = true
+  try {
+    const res = await memoryApi.list()
+    memories.value = res.data || res || []
+  } catch (e) {
+    memories.value = []
+  }
+}
+
+async function removeMemory(id) {
+  await memoryApi.remove(id)
+  await openMemory()
+}
+
+async function clearMemory() {
+  await memoryApi.clear()
+  memories.value = []
+}
+
 function resetChat() {
   messages.value = []
   draft.value = ''
@@ -316,6 +361,12 @@ defineExpose({ resetChat })
 .know-text { font-size: var(--font-xs); color: var(--text-secondary); line-height: 1.5; }
 .know-level { display:inline-block; padding:0 4px; margin-right:4px; border-radius:3px; background: var(--bg-hover, #eee); color: var(--text-secondary); }
 .know-src { font-size: 11px; color: var(--text-hint); margin-top: 2px; }
+.memory-hint { font-size: var(--font-xs); color: var(--text-hint); margin: 0 0 10px; }
+.memory-item { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-top:0.5px dashed var(--border-light); }
+.memory-item:first-of-type { border-top:none; }
+.memory-main { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+.memory-key { font-size: var(--font-xs); color: var(--text-secondary); }
+.memory-value { font-size: var(--font-sm); color: var(--text-primary); }
 .triage { margin-top: 10px; padding: 10px 12px; background: var(--bg-primary); border-radius: var(--radius-sm); }
 .triage-head { font-size: var(--font-xs); color: var(--text-hint); margin-bottom: 6px; }
 .triage-item { display: flex; gap: 8px; align-items: baseline; padding: 3px 0; }
