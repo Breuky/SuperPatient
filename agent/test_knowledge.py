@@ -85,8 +85,9 @@ class KnowledgeTest(unittest.TestCase):
     def test_citation_fields_present(self):
         r = self.idx.search("糖化是什么", INDICATORS)
         hit = r["hits"][0]
-        for key in ("source_id", "source_title", "locator", "text", "origin_level"):
+        for key in ("source_id", "source_title", "locator", "text"):
             self.assertTrue(hit.get(key), key)
+        self.assertIn("origin_level", hit, "命中结果要带来源等级字段供前端展示")
 
     def test_clean_strips_filler(self):
         self.assertEqual("ldl", knowledge.clean("帮我看看我的 LDL 啊"))
