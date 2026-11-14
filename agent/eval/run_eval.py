@@ -15,6 +15,8 @@ import argparse
 import json
 import os
 import sys
+import time
+import urllib.error
 import urllib.request
 from collections import Counter
 
@@ -28,7 +30,7 @@ def post(path, payload, token=None):
         headers["token"] = token
     req = urllib.request.Request(BASE + path, data=json.dumps(payload, ensure_ascii=False).encode(),
                                  headers=headers, method="POST")
-    with urllib.request.urlopen(req, timeout=180) as resp:
+    with urllib.request.urlopen(req, timeout=120) as resp:
         return json.loads(resp.read().decode("utf-8"))
 
 
@@ -37,9 +39,19 @@ def login():
     return body["data"]["token"]
 
 
-def run_case(case, token):
-    data = post("/api/insights/report",
-                {"mode": "agent", "question": case["question"]}, token)["data"]
+def run_case(case, token, retried=False):
+    try:
+        body = post("/api/insights/report",
+                    {"mode": "agent", "question": case["question"]}, token)
+    except urllib.error.HTTPError as e:
+        # 限流时按 Retry-After 等一轮再试，否则采样会被 429 污染
+        if e.code == 429 and not retried:
+            wait = int(e.headers.get("Retry-After") or 60)
+            print("   … 命中限流，等待 %ds 后重试" % wait)
+            time.sleep(min(wait + 2, 90))
+            return run_case(case, token, retried=True)
+        raise
+    data = body["data"]
     trace = [t.get("tool") for t in (data.get("trace") or [])]
     hits = (data.get("knowledge") or {}).get("hits") or []
     return {
@@ -93,6 +105,7 @@ def judge(case, res):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--ids", default="", help="只跑指定 id，逗号分隔")
     ap.add_argument("--delay", type=float, default=7.0, help="每个用例之间的间隔秒数（避开 10 次/分钟限流）")
     ap.add_argument("--out", default="eval/report.md")
     args = ap.parse_args()
@@ -100,6 +113,9 @@ def main():
     cases = json.load(open(CASES, encoding="utf-8"))["cases"]
     if args.limit:
         cases = cases[:args.limit]
+    if args.ids:
+        wanted = {x.strip() for x in args.ids.split(",") if x.strip()}
+        cases = [c for c in cases if c["id"] in wanted]
 
     token = login()
     rows, agg = [], Counter()

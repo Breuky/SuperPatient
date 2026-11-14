@@ -309,6 +309,72 @@
           "find_indicator"
         ]
       }
+    },
+    {
+      "id": "KB-06",
+      "question": "低密度脂蛋白胆固醇是什么？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "search_knowledge"
+        ],
+        "source_ids": [
+          "GUIDE-LIPID-2023",
+          "TEXTBOOK-COMMON"
+        ]
+      }
+    },
+    {
+      "id": "KB-07",
+      "question": "为什么血脂没有统一的正常值？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "search_knowledge"
+        ],
+        "source_ids": [
+          "GUIDE-LIPID-2023"
+        ]
+      }
+    },
+    {
+      "id": "KB-08",
+      "question": "肌酐为什么要结合 eGFR 一起看？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "search_knowledge"
+        ],
+        "source_ids": [
+          "GUIDE-CKD-2023"
+        ]
+      }
+    },
+    {
+      "id": "KB-09",
+      "question": "尿白蛋白肌酐比值是什么？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "search_knowledge"
+        ],
+        "source_ids": [
+          "GUIDE-CKD-2023"
+        ]
+      }
+    },
+    {
+      "id": "KB-10",
+      "question": "糖化血红蛋白是什么？",
+      "expect": {
+        "capability": "L1",
+        "tools_any": [
+          "search_knowledge"
+        ],
+        "source_ids": [
+          "TEXTBOOK-COMMON"
+        ]
+      }
     }
   ]
 }
